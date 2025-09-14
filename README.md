@@ -47,6 +47,7 @@ The implemented framework fully supports official data integration when availabl
 ## Table of contents
 
   * [Download](#download)
+  * [🐳 Docker Support](#-docker-support)
   * [Usage](#usage)
   * [Supported Hardware](#supported-hardware)
   * [Building](#building)
@@ -96,6 +97,18 @@ The implemented framework fully supports official data integration when availabl
   ```
   $ pkg install welle.io
   ```
+
+* **🐳 Docker (Thailand DAB+ Edition)**
+  ```bash
+  # Build Thailand DAB+ Docker image
+  ./docker-build.sh
+  
+  # Run CLI version with web interface
+  docker-compose up welle-cli-thailand
+  
+  # Access web interface
+  open http://localhost:8080
+  ```
   
 If you discovered an issue please open a new [issue](https://github.com/AlbrechtL/welle.io/issues).
 
@@ -105,6 +118,76 @@ welle.io is under development. You can also try the latest developer builds. But
 * [welle.io nightly builds](https://welle-io-nightlies.albrechtloh.de/) (Windows, Linux)
 * Build artifacts in [Actions](https://github.com/AlbrechtL/welle.io/actions) runs
 
+## 🐳 Docker Support
+
+This Thailand DAB+ edition provides comprehensive Docker support for easy deployment and testing.
+
+### Thailand DAB+ Docker Images
+
+The Thailand edition includes specialized Docker configurations:
+
+- **`Dockerfile.thailand`** - Complete Thailand DAB+ support with Thai fonts and NBTC compliance
+- **`docker-compose.yml`** - Multi-service deployment (CLI, GUI, development modes)  
+- **`docker-build.sh`** - Automated build script
+
+### Building Docker Images
+
+```bash
+# Quick build
+./docker-build.sh
+
+# Clean build (no cache)
+./docker-build.sh --no-cache
+
+# Manual build
+docker build -f Dockerfile.thailand -t welle-io-thailand:latest .
+```
+
+### Running with Docker
+
+#### CLI Mode (Web Interface)
+```bash
+# Start welle-cli with web interface on port 8080
+docker-compose up welle-cli-thailand
+
+# Access web interface at http://localhost:8080
+```
+
+#### GUI Mode (Linux Desktop)
+```bash
+# Enable X11 forwarding for GUI
+docker-compose --profile gui up welle-gui-thailand
+```
+
+#### Development Mode
+```bash
+# Start development container
+docker-compose --profile dev up welle-thailand-dev
+```
+
+### Docker Features
+
+- ✅ **Thailand DAB+ Compliance** - Full NBTC compliance support
+- ✅ **Thai Character Support** - Thai Profile (0x0E) and Unicode
+- ✅ **Thai Fonts** - Noto Sans Thai bundled
+- ✅ **Hardware Support** - RTL-SDR, Airspy, SoapySDR
+- ✅ **Web Interface** - Modern web-based control panel
+- ✅ **API Access** - JSON API on port 2000
+- ✅ **Testing Suite** - Built-in Thailand compliance tests
+
+### RTL-SDR USB Device Support
+
+For RTL-SDR support, ensure your USB device is properly connected:
+
+```bash
+# Check RTL-SDR device
+lsusb | grep RTL
+
+# Run with device access
+docker-compose up welle-cli-thailand
+```
+
+The Docker containers automatically detect and configure RTL-SDR devices.
 
 ## Usage
 

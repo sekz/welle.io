@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # welle-cli Thailand DAB+ service
+  welle-cli-thailand:
+    build:
+      context: .
+      dockerfile: Dockerfile.thailand
+    image: welle-cli-thailand:latest
+    container_name: welle-cli-thailand
+    ports:
+      - "8080:8080"   # Web interface
+      - "2000:2000"   # API port
+    volumes:
+      - ./thailand-config:/etc/welle-io/thailand:ro
+      - ./logs:/var/log/welle-io
+    environment:
+      - LC_ALL=th_TH.UTF-8
+      - LANG=th_TH.UTF-8
+      - THAILAND_DAB_MODE=1
+      - NBTC_COMPLIANCE=1
+    devices:
+      - /dev/bus/usb:/dev/bus/usb  # USB devices (RTL-SDR, etc.)
+    privileged: true  # Required for USB device access
+    restart: unless-stopped
+    command: ["welle-cli", "--webport", "8080", "--jsonapi", "2000"]
+
+  # welle-gui Thailand DAB+ service (for X11 forwarding)
+  welle-gui-thailand:
+    build:
+      context: .
+      dockerfile: Dockerfile.thailand
+    image: welle-gui-thailand:latest
+    container_name: welle-gui-thailand
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ./thailand-config:/etc/welle-io/thailand:ro
+    environment:
+      - DISPLAY=${DISPLAY}
+      - LC_ALL=th_TH.UTF-8
+      - LANG=th_TH.UTF-8
+      - THAILAND_DAB_MODE=1
+    devices:
+      - /dev/bus/usb:/dev/bus/usb
+    privileged: true
+    network_mode: host
+    command: ["welle-io"]
+    profiles: ["gui"]  # Only start with --profile gui
+
+  # Development/Testing container
+  welle-thailand-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.thailand
+      target: build  # Stop at build stage for development
+    image: welle-thailand-dev:latest
+    container_name: welle-thailand-dev
+    volumes:
+      - .:/src/welle.io
+      - ./build-docker:/src/welle.io/build
+    working_dir: /src/welle.io
+    environment:
+      - LC_ALL=th_TH.UTF-8
+      - THAILAND_DAB_MODE=1
+    command: ["/bin/bash"]
+    profiles: ["dev"]

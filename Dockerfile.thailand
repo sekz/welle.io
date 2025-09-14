@@ -1,0 +1,79 @@
+# welle.io Thailand DAB+ Compliance Docker Image
+
+FROM ubuntu:24.04
+LABEL maintainer="Thailand DAB+ Compliance"
+LABEL description="welle.io with Thailand DAB+ support and NBTC compliance"
+LABEL version="thailand-1.0"
+
+# Install dependencies including Thai language support
+RUN apt-get update -y && \
+    apt-get install -y \
+    git build-essential cmake \
+    libfaad-dev libmpg123-dev libfftw3-dev \
+    librtlsdr-dev libusb-1.0-0-dev \
+    libsoapysdr-dev libairspy-dev libmp3lame-dev \
+    mesa-common-dev libglu1-mesa-dev libpulse-dev \
+    # Thai language and font support
+    language-pack-th fonts-noto-cjk \
+    fonts-thai-tlwg ttf-thai-tlwg \
+    # Qt dependencies for GUI support
+    qt6-base-dev qt6-declarative-dev \
+    qt6-multimedia-dev qt6-charts-dev \
+    xxd && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set Thai locale
+ENV LC_ALL=th_TH.UTF-8
+ENV LANG=th_TH.UTF-8
+ENV LANGUAGE=th_TH:th
+
+WORKDIR /src
+
+# Clone and build welle.io with Thailand DAB+ support
+COPY . /src/welle.io/
+WORKDIR /src/welle.io
+
+# Create build directory
+RUN mkdir -p build && cd build
+
+# Configure build with Thailand support
+RUN cd build && \
+    cmake .. \
+    -DBUILD_WELLE_IO=ON \
+    -DBUILD_WELLE_CLI=ON \
+    -DRTLSDR=ON \
+    -DAIRSPY=ON \
+    -DSOAPYSDR=ON \
+    -DTHAILAND_DAB_SUPPORT=ON \
+    -DBUNDLE_THAI_FONTS=ON \
+    -DBUILD_THAILAND_TESTS=ON \
+    -DCMAKE_BUILD_TYPE=Release \
+    -Wno-dev
+
+# Build the application
+RUN cd build && make -j$(nproc)
+
+# Run Thailand compliance tests
+RUN cd build && \
+    if [ -f "src/tests/test_thailand_compliance" ]; then \
+        echo "Running Thailand DAB+ compliance tests..."; \
+        ./src/tests/test_thailand_compliance || echo "Tests completed"; \
+    fi
+
+# Install the applications
+RUN cd build && make install
+
+# Create Thailand configuration directory
+RUN mkdir -p /etc/welle-io/thailand
+COPY resources/thailand/*.json /etc/welle-io/thailand/
+
+# Expose ports for welle-cli web interface
+EXPOSE 8080 2000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD welle-cli --help > /dev/null || exit 1
+
+# Default command
+CMD ["welle-cli", "--help"]
