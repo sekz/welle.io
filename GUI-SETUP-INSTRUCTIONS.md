@@ -31,16 +31,34 @@ open http://localhost:8080
 
 To build and run the native GUI application:
 
-### 1. Quick Installation (Recommended)
+### 🚀 Quick Setup (Recommended)
 
-Use the provided installation helper:
+Use the unified Thailand DAB+ GUI builder:
 
 ```bash
 cd welle.io
-./install-gui-deps.sh
+
+# One-command setup (install dependencies + build)
+./build-thailand-gui.sh install && ./build-thailand-gui.sh build
+
+# Or step by step:
+./build-thailand-gui.sh check     # Check system requirements
+./build-thailand-gui.sh install   # Install dependencies (requires sudo)
+./build-thailand-gui.sh build     # Build GUI and CLI
 ```
 
-### 1b. Manual Installation
+### Available Commands
+
+```bash
+./build-thailand-gui.sh help      # Show all options
+./build-thailand-gui.sh check     # Check system requirements
+./build-thailand-gui.sh install   # Install Qt6 and dependencies
+./build-thailand-gui.sh build     # Build GUI locally
+./build-thailand-gui.sh clean     # Clean build directory
+./build-thailand-gui.sh build --verbose  # Build with detailed output
+```
+
+### Manual Installation (Alternative)
 
 ```bash
 sudo apt update && sudo apt install -y \
@@ -52,36 +70,16 @@ sudo apt update && sudo apt install -y \
   fonts-thai-tlwg
 ```
 
-### 2. Build Thailand DAB+ GUI
+### Run Thailand DAB+ GUI
 
-```bash
-cd welle.io
-rm -rf build
-mkdir -p build && cd build
-
-# Configure with Thailand support
-cmake .. \
-  -DBUILD_WELLE_IO=ON \
-  -DBUILD_WELLE_CLI=ON \
-  -DRTLSDR=ON \
-  -DAIRSPY=ON \
-  -DSOAPYSDR=ON \
-  -DCMAKE_BUILD_TYPE=Release
-
-# Build (takes 5-10 minutes)
-make -j$(nproc)
-```
-
-### 3. Run Thailand DAB+ GUI
+After successful build:
 
 ```bash
 # GUI application
-cd build/src/welle-io
-./welle-io
+cd build/src/welle-io && ./welle-io
 
-# CLI application
-cd build
-./welle-cli -c 12B -w 8080
+# CLI application  
+cd build && ./welle-cli -c 12B -w 8080
 ```
 
 ## 🇹🇭 Thailand DAB+ Features
@@ -152,11 +150,14 @@ docker run -p 8080:8080 welle-cli-thailand:latest \
 
 ### Qt6 Installation Issues
 ```bash
-# Check Qt6 installation
-dpkg -l | grep qt6-base-dev
+# Check what's installed
+./build-thailand-gui.sh check
 
-# Alternative Qt6 packages
-sudo apt install qtbase6-dev qtdeclarative6-dev
+# Install missing packages
+./build-thailand-gui.sh install
+
+# Force build even with missing dependencies
+./build-thailand-gui.sh build --force
 ```
 
 ### Permission Issues
@@ -164,16 +165,19 @@ sudo apt install qtbase6-dev qtdeclarative6-dev
 # RTL-SDR permissions
 sudo usermod -a -G plugdev $USER
 # Logout and login again
+
+# Build directory permissions
+./build-thailand-gui.sh clean
 ```
 
 ### Build Issues
 ```bash
-# Clean build
-rm -rf build
-mkdir -p build && cd build
+# Clean and rebuild with verbose output
+./build-thailand-gui.sh clean
+./build-thailand-gui.sh build --verbose
 
-# Check dependencies
-cmake .. -DBUILD_WELLE_IO=ON 2>&1 | grep -i "not found"
+# Check system requirements
+./build-thailand-gui.sh check
 ```
 
 ## Docker Alternative (Advanced)
