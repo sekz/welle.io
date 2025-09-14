@@ -137,6 +137,63 @@ std::string toUtf8StringUsingCharset(const void* buffer,
             }
             break;
 
+        case CharacterSet::ThaiProfile:
+            {
+                // Thai Profile (0x0E) implementation
+                // Convert Thai encoding to UTF-8
+                std::string result;
+                const uint8_t* buf = reinterpret_cast<const uint8_t*>(buffer);
+                
+                if (num_bytes == 0) {
+                    while (*buf) {
+                        if (*buf >= 0x20 && *buf <= 0x7F) {
+                            // ASCII range - direct mapping
+                            result += static_cast<char>(*buf);
+                        } else if (*buf >= 0xA1 && *buf <= 0xFE) {
+                            // Thai character range (TIS-620)
+                            // Convert to UTF-8 Thai characters (U+0E01 - U+0E5E)
+                            uint16_t thai_char = 0x0E00 + (*buf - 0xA0);
+                            // Convert UTF-16 Thai character to UTF-8
+                            if (thai_char <= 0x7F) {
+                                result += static_cast<char>(thai_char);
+                            } else if (thai_char <= 0x7FF) {
+                                result += static_cast<char>(0xC0 | (thai_char >> 6));
+                                result += static_cast<char>(0x80 | (thai_char & 0x3F));
+                            } else {
+                                result += static_cast<char>(0xE0 | (thai_char >> 12));
+                                result += static_cast<char>(0x80 | ((thai_char >> 6) & 0x3F));
+                                result += static_cast<char>(0x80 | (thai_char & 0x3F));
+                            }
+                        } else {
+                            // Fallback for undefined characters
+                            result += '?';
+                        }
+                        buf++;
+                    }
+                } else {
+                    for (size_t i = 0; i < num_bytes; i++) {
+                        if (buf[i] >= 0x20 && buf[i] <= 0x7F) {
+                            result += static_cast<char>(buf[i]);
+                        } else if (buf[i] >= 0xA1 && buf[i] <= 0xFE) {
+                            uint16_t thai_char = 0x0E00 + (buf[i] - 0xA0);
+                            if (thai_char <= 0x7F) {
+                                result += static_cast<char>(thai_char);
+                            } else if (thai_char <= 0x7FF) {
+                                result += static_cast<char>(0xC0 | (thai_char >> 6));
+                                result += static_cast<char>(0x80 | (thai_char & 0x3F));
+                            } else {
+                                result += static_cast<char>(0xE0 | (thai_char >> 12));
+                                result += static_cast<char>(0x80 | ((thai_char >> 6) & 0x3F));
+                                result += static_cast<char>(0x80 | (thai_char & 0x3F));
+                            }
+                        } else {
+                            result += '?';
+                        }
+                    }
+                }
+                return result;
+            }
+            break;
         case CharacterSet::EbuLatin:
         default:
             {

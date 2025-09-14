@@ -1,0 +1,407 @@
+{
+  "thailand_dab_service_presets": {
+    "version": "1.0",
+    "last_updated": "2024-01-01",
+    "presets": {
+      "bangkok_metro": {
+        "region_name_thai": "กรุงเทพมหานครและปริมณฑล",
+        "region_name_english": "Bangkok Metropolitan Region",
+        "ensembles": [
+          {
+            "frequency": 225648000,
+            "channel": "12B",
+            "ensemble_id": "0x4001",
+            "ensemble_label_thai": "วิทยุแห่งชาติกรุงเทพฯ",
+            "ensemble_label_english": "National Radio Bangkok",
+            "services": [
+              {
+                "service_id": "0x4001",
+                "service_label_thai": "วิทยุกระจายเสียงแห่งประเทศไทย",
+                "service_label_english": "Radio Thailand",
+                "programme_type": 1,
+                "programme_type_thai": "ข่าว",
+                "programme_type_english": "News",
+                "language": "th",
+                "bitrate": 128,
+                "emergency_support": true,
+                "traffic_support": true,
+                "character_set": "0x0E"
+              },
+              {
+                "service_id": "0x4002",
+                "service_label_thai": "เพลงไทยสากล",
+                "service_label_english": "Thai International Music",
+                "programme_type": 10,
+                "programme_type_thai": "เพลงป็อป",
+                "programme_type_english": "Pop Music",
+                "language": "th",
+                "bitrate": 96,
+                "emergency_support": false,
+                "traffic_support": false,
+                "character_set": "0x0E"
+              },
+              {
+                "service_id": "0x4003",
+                "service_label_thai": "จราจรกรุงเทพฯ",
+                "service_label_english": "Bangkok Traffic",
+                "programme_type": 22,
+                "programme_type_thai": "ท่องเที่ยว",
+                "programme_type_english": "Travel",
+                "language": "th",
+                "bitrate": 64,
+                "emergency_support": true,
+                "traffic_support": true,
+                "character_set": "0x0E"
+              }
+            ]
+          },
+          {
+            "frequency": 227360000,
+            "channel": "12C",
+            "ensemble_id": "0x4011",
+            "ensemble_label_thai": "สื่อสารมวลชนแห่งประเทศไทย",
+            "ensemble_label_english": "Mass Communication Organization of Thailand",
+            "services": [
+              {
+                "service_id": "0x4011",
+                "service_label_thai": "ข่าวสดรายวัน",
+                "service_label_english": "Daily Live News",
+                "programme_type": 1,
+                "programme_type_thai": "ข่าว",
+                "programme_type_english": "News",
+                "language": "th",
+                "bitrate": 128,
+                "emergency_support": true,
+                "traffic_support": false,
+                "character_set": "0x0E"
+              },
+              {
+                "service_id": "0x4012",
+                "service_label_thai": "กีฬาไทย",
+                "service_label_english": "Thai Sports",
+                "programme_type": 4,
+                "programme_type_thai": "กีฬา",
+                "programme_type_english": "Sport",
+                "language": "th",
+                "bitrate": 96,
+                "emergency_support": false,
+                "traffic_support": false,
+                "character_set": "0x0E"
+              },
+              {
+                "service_id": "0x4013",
+                "service_label_thai": "วัฒนธรรมไทย",
+                "service_label_english": "Thai Culture",
+                "programme_type": 7,
+                "programme_type_thai": "วัฒนธรรม",
+                "programme_type_english": "Culture",
+                "language": "th",
+                "bitrate": 96,
+                "emergency_support": false,
+                "traffic_support": false,
+                "character_set": "0x0E"
+              }
+            ]
+          }
+        ]
+      },
+      "northern": {
+        "region_name_thai": "ภาคเหนือ",
+        "region_name_english": "Northern Region",
+        "ensembles": [
+          {
+            "frequency": 229072000,
+            "channel": "12D",
+            "ensemble_id": "0x4021",
+            "ensemble_label_thai": "วิทยุภาคเหนือ",
+            "ensemble_label_english": "Northern Radio",
+            "services": [
+              {
+                "service_id": "0x4021",
+                "service_label_thai": "ข่าวเชียงใหม่",
+                "service_label_english": "Chiang Mai News",
+                "programme_type": 1,
+                "programme_type_thai": "ข่าว",
+                "programme_type_english": "News",
+                "language": "th",
+                "bitrate": 128,
+                "emergency_support": true,
+                "traffic_support": true,
+                "character_set": "0x0E"
+              },
+              {
+                "service_id": "0x4022",
+                "service_label_thai": "เพลงล้านนา",
+                "service_label_english": "Lanna Music",
+                "programme_type": 26,
+                "programme_type_thai": "เพลงชาติพันธุ์",
+                "programme_type_english": "National Music",
+                "language": "th",
+                "bitrate": 96,
+                "emergency_support": false,
+                "traffic_support": false,
+                "character_set": "0x0E"
+              },
+              {
+                "service_id": "0x4023",
+                "service_label_thai": "ท่องเที่ยวเหนือ",
+                "service_label_english": "Northern Tourism",
+                "programme_type": 22,
+                "programme_type_thai": "ท่องเที่ยว",
+                "programme_type_english": "Travel",
+                "language": "th",
+                "bitrate": 64,
+                "emergency_support": false,
+                "traffic_support": true,
+                "character_set": "0x0E"
+              }
+            ]
+          }
+        ]
+      },
+      "central": {
+        "region_name_thai": "ภาคกลาง",
+        "region_name_english": "Central Region",
+        "ensembles": [
+          {
+            "frequency": 222064000,
+            "channel": "11D",
+            "ensemble_id": "0x4031",
+            "ensemble_label_thai": "วิทยุภาคกลาง",
+            "ensemble_label_english": "Central Radio",
+            "services": [
+              {
+                "service_id": "0x4031",
+                "service_label_thai": "ข่าวภาคกลาง",
+                "service_label_english": "Central News",
+                "programme_type": 1,
+                "programme_type_thai": "ข่าว",
+                "programme_type_english": "News",
+                "language": "th",
+                "bitrate": 128,
+                "emergency_support": true,
+                "traffic_support": true,
+                "character_set": "0x0E"
+              },
+              {
+                "service_id": "0x4032",
+                "service_label_thai": "การเกษตรไทย",
+                "service_label_english": "Thai Agriculture",
+                "programme_type": 3,
+                "programme_type_thai": "สารคดี",
+                "programme_type_english": "Information",
+                "language": "th",
+                "bitrate": 96,
+                "emergency_support": false,
+                "traffic_support": false,
+                "character_set": "0x0E"
+              }
+            ]
+          }
+        ]
+      },
+      "southern": {
+        "region_name_thai": "ภาคใต้",
+        "region_name_english": "Southern Region",
+        "ensembles": [
+          {
+            "frequency": 218640000,
+            "channel": "11B",
+            "ensemble_id": "0x4041",
+            "ensemble_label_thai": "วิทยุภาคใต้",
+            "ensemble_label_english": "Southern Radio",
+            "services": [
+              {
+                "service_id": "0x4041",
+                "service_label_thai": "ข่าวภูเก็ต",
+                "service_label_english": "Phuket News",
+                "programme_type": 1,
+                "programme_type_thai": "ข่าว",
+                "programme_type_english": "News",
+                "language": "th",
+                "bitrate": 128,
+                "emergency_support": true,
+                "traffic_support": true,
+                "character_set": "0x0E"
+              },
+              {
+                "service_id": "0x4042",
+                "service_label_thai": "ท่องเที่ยวใต้",
+                "service_label_english": "Southern Tourism",
+                "programme_type": 22,
+                "programme_type_thai": "ท่องเที่ยว",
+                "programme_type_english": "Travel",
+                "language": "th",
+                "bitrate": 96,
+                "emergency_support": false,
+                "traffic_support": false,
+                "character_set": "0x0E"
+              },
+              {
+                "service_id": "0x4043",
+                "service_label_thai": "เพลงใต้",
+                "service_label_english": "Southern Music",
+                "programme_type": 26,
+                "programme_type_thai": "เพลงชาติพันธุ์",
+                "programme_type_english": "National Music",
+                "language": "th",
+                "bitrate": 96,
+                "emergency_support": false,
+                "traffic_support": false,
+                "character_set": "0x0E"
+              }
+            ]
+          }
+        ]
+      },
+      "northeastern": {
+        "region_name_thai": "ภาคตะวันออกเฉียงเหนือ",
+        "region_name_english": "Northeastern Region",
+        "ensembles": [
+          {
+            "frequency": 213360000,
+            "channel": "10C",
+            "ensemble_id": "0x4051",
+            "ensemble_label_thai": "วิทยุอีสาน",
+            "ensemble_label_english": "Isan Radio",
+            "services": [
+              {
+                "service_id": "0x4051",
+                "service_label_thai": "ข่าวอีสาน",
+                "service_label_english": "Isan News",
+                "programme_type": 1,
+                "programme_type_thai": "ข่าว",
+                "programme_type_english": "News",
+                "language": "th",
+                "bitrate": 128,
+                "emergency_support": true,
+                "traffic_support": true,
+                "character_set": "0x0E"
+              },
+              {
+                "service_id": "0x4052",
+                "service_label_thai": "เพลงอีสาน",
+                "service_label_english": "Isan Music",
+                "programme_type": 28,
+                "programme_type_thai": "เพลงพื้นบ้าน",
+                "programme_type_english": "Folk Music",
+                "language": "th",
+                "bitrate": 96,
+                "emergency_support": false,
+                "traffic_support": false,
+                "character_set": "0x0E"
+              },
+              {
+                "service_id": "0x4053",
+                "service_label_thai": "วัฒนธรรมอีสาน",
+                "service_label_english": "Isan Culture",
+                "programme_type": 7,
+                "programme_type_thai": "วัฒนธรรม",
+                "programme_type_english": "Culture",
+                "language": "th",
+                "bitrate": 64,
+                "emergency_support": false,
+                "traffic_support": false,
+                "character_set": "0x0E"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "emergency_services": {
+      "national_emergency": {
+        "service_id": "0x9999",
+        "service_label_thai": "แจ้งเตือนฉุกเฉิน",
+        "service_label_english": "Emergency Alert System",
+        "frequency": 225648000,
+        "channel": "12B",
+        "priority": "highest",
+        "coverage": "national",
+        "languages": ["th", "en"],
+        "character_set": "0x0E",
+        "alert_types": [
+          {
+            "type": "tsunami",
+            "name_thai": "คลื่นสึนามิ",
+            "name_english": "Tsunami Warning"
+          },
+          {
+            "type": "earthquake",
+            "name_thai": "แผ่นดินไหว",
+            "name_english": "Earthquake Alert"
+          },
+          {
+            "type": "flood",
+            "name_thai": "น้ำท่วม",
+            "name_english": "Flood Warning"
+          },
+          {
+            "type": "storm",
+            "name_thai": "พายุ",
+            "name_english": "Storm Warning"
+          },
+          {
+            "type": "fire",
+            "name_thai": "อัคคีภัย",
+            "name_english": "Fire Emergency"
+          },
+          {
+            "type": "health",
+            "name_thai": "สาธารณสุขฉุกเฉิน",
+            "name_english": "Public Health Emergency"
+          },
+          {
+            "type": "security",
+            "name_thai": "ความมั่นคง",
+            "name_english": "Security Alert"
+          }
+        ]
+      }
+    },
+    "traffic_services": {
+      "bangkok_traffic": {
+        "service_id": "0x8888",
+        "service_label_thai": "จราจรกรุงเทพฯ",
+        "service_label_english": "Bangkok Traffic Information",
+        "frequency": 225648000,
+        "channel": "12B",
+        "coverage_area": "bangkok_metro",
+        "update_interval_minutes": 5,
+        "languages": ["th", "en"],
+        "character_set": "0x0E",
+        "data_sources": [
+          {
+            "name": "BMA Traffic Control Center",
+            "type": "government"
+          },
+          {
+            "name": "Department of Highways",
+            "type": "government"
+          },
+          {
+            "name": "Royal Thai Police",
+            "type": "government"
+          }
+        ]
+      }
+    },
+    "character_set_support": {
+      "primary": "0x0E",
+      "fallback": ["0x0F", "0x00"],
+      "description": {
+        "0x0E": "Thai Profile - Full Thai character support",
+        "0x0F": "Unicode UTF-8 - International standard",
+        "0x00": "EBU Latin - Basic Latin characters"
+      },
+      "thai_language_features": {
+        "tone_marks": true,
+        "vowel_signs": true,
+        "thai_numerals": true,
+        "mixed_thai_english": true,
+        "word_segmentation": true,
+        "text_shaping": true
+      }
+    }
+  }
+}

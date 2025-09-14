@@ -34,6 +34,7 @@
 enum class CharacterSet : uint8_t {
     EbuLatin = 0x00, // Complete EBU Latin based repertoire - see annex C
     UnicodeUcs2 = 0x06,
+    ThaiProfile = 0x0E, // Thai Profile - Thailand DAB+ compliance
     UnicodeUtf8 = 0x0F,
     Undefined,
 };

@@ -1,0 +1,438 @@
+{
+  "thailand_dab_frequency_plan": {
+    "version": "1.0",
+    "standard": "ETSI EN 300 401 V2.1.1",
+    "authority": "NBTC Thailand",
+    "regulation": "NBTC ผว. 104-2567",
+    "band": "VHF Band III",
+    "frequency_range": {
+      "start": 174928000,
+      "end": 240000000,
+      "unit": "Hz"
+    },
+    "channels": {
+      "5A": {
+        "frequency": 174928000,
+        "channel_name": "5A",
+        "block": "5",
+        "allocated": true,
+        "regions": ["central", "bangkok_metro"]
+      },
+      "5B": {
+        "frequency": 176640000,
+        "channel_name": "5B",
+        "block": "5",
+        "allocated": true,
+        "regions": ["central"]
+      },
+      "5C": {
+        "frequency": 178352000,
+        "channel_name": "5C",
+        "block": "5",
+        "allocated": true,
+        "regions": ["northern"]
+      },
+      "5D": {
+        "frequency": 180064000,
+        "channel_name": "5D",
+        "block": "5",
+        "allocated": true,
+        "regions": ["northern"]
+      },
+      "6A": {
+        "frequency": 181936000,
+        "channel_name": "6A",
+        "block": "6",
+        "allocated": true,
+        "regions": ["central"]
+      },
+      "6B": {
+        "frequency": 183648000,
+        "channel_name": "6B",
+        "block": "6",
+        "allocated": true,
+        "regions": ["central", "northern"]
+      },
+      "6C": {
+        "frequency": 185360000,
+        "channel_name": "6C",
+        "block": "6",
+        "allocated": true,
+        "regions": ["northern"]
+      },
+      "6D": {
+        "frequency": 187072000,
+        "channel_name": "6D",
+        "block": "6",
+        "allocated": true,
+        "regions": ["northeastern"]
+      },
+      "7A": {
+        "frequency": 188928000,
+        "channel_name": "7A",
+        "block": "7",
+        "allocated": true,
+        "regions": ["northeastern"]
+      },
+      "7B": {
+        "frequency": 190640000,
+        "channel_name": "7B",
+        "block": "7",
+        "allocated": true,
+        "regions": ["northeastern", "central"]
+      },
+      "7C": {
+        "frequency": 192352000,
+        "channel_name": "7C",
+        "block": "7",
+        "allocated": true,
+        "regions": ["central"]
+      },
+      "7D": {
+        "frequency": 194064000,
+        "channel_name": "7D",
+        "block": "7",
+        "allocated": true,
+        "regions": ["southern"]
+      },
+      "8A": {
+        "frequency": 195936000,
+        "channel_name": "8A",
+        "block": "8",
+        "allocated": true,
+        "regions": ["southern"]
+      },
+      "8B": {
+        "frequency": 197648000,
+        "channel_name": "8B",
+        "block": "8",
+        "allocated": true,
+        "regions": ["southern"]
+      },
+      "8C": {
+        "frequency": 199360000,
+        "channel_name": "8C",
+        "block": "8",
+        "allocated": true,
+        "regions": ["southern"]
+      },
+      "8D": {
+        "frequency": 201072000,
+        "channel_name": "8D",
+        "block": "8",
+        "allocated": true,
+        "regions": ["central"]
+      },
+      "9A": {
+        "frequency": 202928000,
+        "channel_name": "9A",
+        "block": "9",
+        "allocated": true,
+        "regions": ["central"]
+      },
+      "9B": {
+        "frequency": 204640000,
+        "channel_name": "9B",
+        "block": "9",
+        "allocated": true,
+        "regions": ["central", "bangkok_metro"]
+      },
+      "9C": {
+        "frequency": 206352000,
+        "channel_name": "9C",
+        "block": "9",
+        "allocated": true,
+        "regions": ["bangkok_metro"]
+      },
+      "9D": {
+        "frequency": 208064000,
+        "channel_name": "9D",
+        "block": "9",
+        "allocated": true,
+        "regions": ["northeastern"]
+      },
+      "10A": {
+        "frequency": 209936000,
+        "channel_name": "10A",
+        "block": "10",
+        "allocated": true,
+        "regions": ["northeastern"]
+      },
+      "10B": {
+        "frequency": 211648000,
+        "channel_name": "10B",
+        "block": "10",
+        "allocated": true,
+        "regions": ["northeastern"]
+      },
+      "10C": {
+        "frequency": 213360000,
+        "channel_name": "10C",
+        "block": "10",
+        "allocated": true,
+        "regions": ["northeastern"]
+      },
+      "10D": {
+        "frequency": 215072000,
+        "channel_name": "10D",
+        "block": "10",
+        "allocated": true,
+        "regions": ["northeastern"]
+      },
+      "11A": {
+        "frequency": 216928000,
+        "channel_name": "11A",
+        "block": "11",
+        "allocated": true,
+        "regions": ["central"]
+      },
+      "11B": {
+        "frequency": 218640000,
+        "channel_name": "11B",
+        "block": "11",
+        "allocated": true,
+        "regions": ["southern"]
+      },
+      "11C": {
+        "frequency": 220352000,
+        "channel_name": "11C",
+        "block": "11",
+        "allocated": true,
+        "regions": ["southern"]
+      },
+      "11D": {
+        "frequency": 222064000,
+        "channel_name": "11D",
+        "block": "11",
+        "allocated": true,
+        "regions": ["central"]
+      },
+      "12A": {
+        "frequency": 223936000,
+        "channel_name": "12A",
+        "block": "12",
+        "allocated": true,
+        "regions": ["central"]
+      },
+      "12B": {
+        "frequency": 225648000,
+        "channel_name": "12B",
+        "block": "12",
+        "allocated": true,
+        "primary": true,
+        "regions": ["bangkok_metro"],
+        "coverage": {
+          "radius_km": 50,
+          "population": 15000000,
+          "major_cities": ["กรุงเทพมหานคร", "นนทบุรี", "ปทุมธานี", "สมุทรปราการ", "สมุทรสาคร", "นครปฐม"]
+        }
+      },
+      "12C": {
+        "frequency": 227360000,
+        "channel_name": "12C",
+        "block": "12",
+        "allocated": true,
+        "primary": true,
+        "regions": ["bangkok_metro"],
+        "coverage": {
+          "radius_km": 50,
+          "population": 15000000,
+          "major_cities": ["กรุงเทพมหานคร", "นนทบุรี", "ปทุมธานี", "สมุทรปราการ", "สมุทรสาคร", "นครปฐม"]
+        }
+      },
+      "12D": {
+        "frequency": 229072000,
+        "channel_name": "12D",
+        "block": "12",
+        "allocated": true,
+        "primary": true,
+        "regions": ["bangkok_metro", "northern"],
+        "coverage": {
+          "radius_km": 60,
+          "population": 20000000,
+          "major_cities": ["กรุงเทพมหานคร", "เชียงใหม่", "ลำพูน", "ลำปาง"]
+        }
+      }
+    },
+    "regional_allocations": {
+      "bangkok_metro": {
+        "name_thai": "กรุงเทพมหานครและปริมณฑล",
+        "name_english": "Bangkok Metropolitan Region",
+        "channels": ["5A", "9B", "9C", "12B", "12C", "12D"],
+        "primary_channels": ["12B", "12C", "12D"],
+        "population": 15000000,
+        "area_km2": 7762,
+        "provinces": [
+          {
+            "name_thai": "กรุงเทพมหานคร",
+            "name_english": "Bangkok",
+            "population": 8280000
+          },
+          {
+            "name_thai": "นนทบุรี",
+            "name_english": "Nonthaburi",
+            "population": 1200000
+          },
+          {
+            "name_thai": "ปทุมธานี",
+            "name_english": "Pathum Thani",
+            "population": 1100000
+          },
+          {
+            "name_thai": "สมุทรปราการ",
+            "name_english": "Samut Prakan",
+            "population": 1300000
+          },
+          {
+            "name_thai": "สมุทรสาคร",
+            "name_english": "Samut Sakhon",
+            "population": 550000
+          },
+          {
+            "name_thai": "นครปฐม",
+            "name_english": "Nakhon Pathom",
+            "population": 900000
+          }
+        ]
+      },
+      "northern": {
+        "name_thai": "ภาคเหนือ",
+        "name_english": "Northern Region",
+        "channels": ["5C", "5D", "6B", "6C", "12D"],
+        "primary_channels": ["12D"],
+        "population": 12000000,
+        "area_km2": 169644,
+        "provinces": [
+          {
+            "name_thai": "เชียงใหม่",
+            "name_english": "Chiang Mai",
+            "population": 1780000
+          },
+          {
+            "name_thai": "เชียงราย",
+            "name_english": "Chiang Rai",
+            "population": 1270000
+          },
+          {
+            "name_thai": "ลำพูน",
+            "name_english": "Lamphun",
+            "population": 410000
+          },
+          {
+            "name_thai": "ลำปาง",
+            "name_english": "Lampang",
+            "population": 750000
+          }
+        ]
+      },
+      "central": {
+        "name_thai": "ภาคกลาง",
+        "name_english": "Central Region",
+        "channels": ["5A", "5B", "6A", "6B", "7B", "7C", "8D", "9A", "9B", "11A", "11D", "12A"],
+        "primary_channels": ["11D", "12A"],
+        "population": 8000000,
+        "area_km2": 100000,
+        "provinces": [
+          {
+            "name_thai": "นครสวรรค์",
+            "name_english": "Nakhon Sawan",
+            "population": 1080000
+          },
+          {
+            "name_thai": "อยุธยา",
+            "name_english": "Ayutthaya",
+            "population": 810000
+          },
+          {
+            "name_thai": "ลพบุรี",
+            "name_english": "Lopburi",
+            "population": 760000
+          }
+        ]
+      },
+      "southern": {
+        "name_thai": "ภาคใต้",
+        "name_english": "Southern Region",
+        "channels": ["7D", "8A", "8B", "8C", "11B", "11C"],
+        "primary_channels": ["11B", "11C"],
+        "population": 9000000,
+        "area_km2": 70715,
+        "provinces": [
+          {
+            "name_thai": "ภูเก็ต",
+            "name_english": "Phuket",
+            "population": 420000
+          },
+          {
+            "name_thai": "สงขลา",
+            "name_english": "Songkhla",
+            "population": 1420000
+          },
+          {
+            "name_thai": "สุราษฎร์ธานี",
+            "name_english": "Surat Thani",
+            "population": 1040000
+          }
+        ]
+      },
+      "northeastern": {
+        "name_thai": "ภาคตะวันออกเฉียงเหนือ",
+        "name_english": "Northeastern Region",
+        "channels": ["6D", "7A", "7B", "9D", "10A", "10B", "10C", "10D"],
+        "primary_channels": ["10C", "10D"],
+        "population": 22000000,
+        "area_km2": 168854,
+        "provinces": [
+          {
+            "name_thai": "นครราชสีมา",
+            "name_english": "Nakhon Ratchasima",
+            "population": 2650000
+          },
+          {
+            "name_thai": "อุบลราชธานี",
+            "name_english": "Ubon Ratchathani",
+            "population": 1860000
+          },
+          {
+            "name_thai": "ขอนแก่น",
+            "name_english": "Khon Kaen",
+            "population": 1800000
+          },
+          {
+            "name_thai": "อุดรธานี",
+            "name_english": "Udon Thani",
+            "population": 1570000
+          }
+        ]
+      }
+    },
+    "technical_specifications": {
+      "transmission_mode": "Mode I",
+      "guard_interval": "1/4",
+      "fft_size": 2048,
+      "carrier_spacing": 1000,
+      "symbol_duration": "1.246 ms",
+      "frame_duration": "96 ms",
+      "ensemble_capacity": "1.536 Mbps",
+      "audio_codecs": ["MPEG-4 HE AAC v2", "MPEG-1 Layer II"],
+      "data_services": ["MOT SlideShow", "DLS", "TPEG", "EPG"],
+      "emergency_alerts": true,
+      "traffic_announcements": true
+    },
+    "quality_requirements": {
+      "minimum_snr_db": 10.0,
+      "minimum_signal_strength_percent": 60,
+      "maximum_fic_errors_per_minute": 10,
+      "minimum_audio_quality_kbps": 64,
+      "coverage_probability_percent": 95
+    },
+    "compliance_standards": [
+      "ETSI EN 300 401 V2.1.1 (DAB System)",
+      "ETSI TS 101 756 V1.8.1 (Character Sets)",
+      "ETSI TS 102 428 V1.2.1 (DMB Video)",
+      "ETSI TS 102 563 V1.2.1 (DAB+ Audio)",
+      "NBTC ผว. 104-2567 (Thailand DAB+ Regulations)",
+      "TIS 620-2533 (Thai Character Standard)"
+    ]
+  }
+}

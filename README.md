@@ -1,7 +1,42 @@
 [welle.io](https://www.welle.io)
 =====================
-This repository contains the implementation of an SDR DAB/DAB+ receiver.  
+This repository contains the implementation of an SDR DAB/DAB+ receiver with **Thailand DAB+ compliance support**.  
 Please see the project website https://www.welle.io for a user oriented documentation.
+
+## 🇹🇭 Thailand DAB+ Features
+
+This fork includes comprehensive support for Thailand's DAB+ broadcasting standards:
+
+- **Thai Character Set (0x0E)** - Full Thai language support with proper text rendering
+- **NBTC Frequency Plan** - Complete support for Thailand's allocated DAB+ frequencies  
+- **Thai User Interface** - Localized UI components with Thai translations
+- **Mixed Language Support** - Seamless Thai-English text display
+- **NBTC Compliance Validation** - Built-in compliance checker for Thailand regulations
+- **Regional Coverage** - Support for all Thailand regions (Bangkok Metro, Northern, Central, Southern, Northeastern)
+
+### Implementation Overview
+
+#### Core Components Added:
+- `src/backend/thailand-compliance/` - NBTC compliance checker and Thai service parser
+- `src/various/thai_text_converter.*` - Thai text processing utilities
+- `src/welle-gui/QML/components/Thai*` - Thai UI components
+- `src/welle-gui/i18n/th_TH.ts` - Complete Thai translations
+- `resources/thailand/` - Thailand-specific configuration files
+
+#### Modified Components:
+- `src/backend/charsets.*` - Added Thai Profile (0x0E) character set support
+- Existing frequency allocation already supports Thailand channels 5A-12D
+
+### Configuration Data Disclaimer
+
+⚠️ **Important**: The configuration files in `resources/thailand/` contain **sample/template data** for development and testing purposes. For production deployment:
+
+- **Frequency allocations** should be verified with [NBTC (กสทช.)](https://www.nbtc.go.th/)
+- **Service presets** should use officially licensed broadcaster information  
+- **Coverage data** should be obtained from authorized sources
+- **Emergency services** configuration must comply with official NBTC regulations
+
+The implemented framework fully supports official data integration when available.
 
 **Build status**
 - Linux (Flatpak x86_64 and arm64): [![Linux build](https://github.com/AlbrechtL/welle.io/actions/workflows/linux.yml/badge.svg)](https://github.com/AlbrechtL/welle.io/actions/workflows/linux.yml)
