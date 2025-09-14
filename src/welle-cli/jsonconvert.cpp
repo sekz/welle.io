@@ -37,6 +37,7 @@ static void to_json(nlohmann::json& j, const DabLabel& l)
     string extended_label_charset = "Unknown";
     switch (l.extended_label_charset) {
         case CharacterSet::EbuLatin: extended_label_charset = "EBU Latin (not allowed in FIG 2)"; break;
+        case CharacterSet::ThaiProfile: extended_label_charset = "Thai Profile"; break;
         case CharacterSet::UnicodeUcs2: extended_label_charset = "UCS2"; break;
         case CharacterSet::UnicodeUtf8: extended_label_charset = "UTF-8"; break;
         case CharacterSet::Undefined: extended_label_charset = "Undefined"; break;

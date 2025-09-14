@@ -23,7 +23,7 @@ services:
       - /dev/bus/usb:/dev/bus/usb # USB devices (RTL-SDR, etc.)
     privileged: true # Required for USB device access
     restart: unless-stopped
-    command: ["welle-cli", "--webport", "8080", "--jsonapi", "2000"]
+    command: ["welle-cli", "-c", "12B", "-w", "8080", "-C", "1"]
 
   # welle-gui Thailand DAB+ service (for X11 forwarding)
   welle-gui-thailand:
@@ -44,7 +44,7 @@ services:
       - /dev/bus/usb:/dev/bus/usb
     privileged: true
     network_mode: host
-    command: ["welle-io"]
+    command: ["welle-io", "--channel", "12B"]
     profiles: ["gui"] # Only start with --profile gui
 
   # Development/Testing container

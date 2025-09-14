@@ -42,7 +42,7 @@ RUN mkdir -p build && cd build
 # Configure build with Thailand support
 RUN cd build && \
     cmake .. \
-    -DBUILD_WELLE_IO=OFF \
+    -DBUILD_WELLE_IO=ON \
     -DBUILD_WELLE_CLI=ON \
     -DRTLSDR=ON \
     -DAIRSPY=ON \
