@@ -22,10 +22,11 @@
  *    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
- 
+
 import QtQuick
 import QtQuick.Layouts
 import QtCore
+import Qt.labs.settings 1.0
 
 import "components"
 

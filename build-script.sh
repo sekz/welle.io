@@ -81,6 +81,7 @@ install_dependencies() {
     log ""
     log "📋 This will install:"
     log "  • Qt6 development packages (GUI framework)"
+    log "  • Qt6 QML runtime modules (GUI components)"
     log "  • Audio codec libraries (FAAD, FDK-AAC, MPG123)"
     log "  • SDR hardware support (RTL-SDR, AirSpy, SoapySDR)"
     log "  • Audio system libraries (ALSA, PulseAudio)"
@@ -103,6 +104,9 @@ install_dependencies() {
     sudo apt install -y \
         build-essential cmake \
         qt6-base-dev qt6-declarative-dev qt6-multimedia-dev qt6-charts-dev \
+        qt6-5compat-dev qml6-module-qt5compat-graphicaleffects \
+        qml6-module-qtquick-window qml6-module-qtcore \
+        qml6-module-qtquick qml6-module-qtquick-controls \
         libfaad-dev libfdk-aac-dev libmpg123-dev \
         librtlsdr-dev libairspy-dev libsoapysdr-dev \
         libasound2-dev libpulse-dev libsndfile1-dev \
@@ -138,13 +142,27 @@ check_dependencies() {
 
     # Check for Qt6 development packages
     log -n "Qt6 development packages: "
-    if dpkg -l 2>/dev/null | grep -q "^ii.*qt6-base-dev "; then
+    if dpkg -l 2>/dev/null | grep -q "^ii.*qt6-base-dev"; then
         log "✅ Found"
         QT6_OK=1
     else
         log "❌ Missing"
         log "   Install with: ./${SCRIPT_NAME} install"
         QT6_OK=0
+    fi
+
+    # Check for Qt6 QML modules
+    log -n "Qt6 QML runtime modules: "
+    if dpkg -l 2>/dev/null | grep -q "^ii.*qml6-module-qtcore" && \
+       dpkg -l 2>/dev/null | grep -q "^ii.*qml6-module-qtquick-window" && \
+       dpkg -l 2>/dev/null | grep -q "^ii.*qt6-5compat-dev"; then
+        log "✅ Found"
+        QML_OK=1
+    else
+        log "❌ Missing QML modules"
+        log "   Install with: ./${SCRIPT_NAME} install"
+        QT6_OK=0
+        QML_OK=0
     fi
 
     # Additional check for Qt6Config.cmake
@@ -235,14 +253,17 @@ build_gui() {
 
     if [ "$FORCE" != "1" ]; then
         # Check dependencies unless forced
-        if ! check_dependencies > /dev/null 2>&1; then
+        log "🔍 Checking dependencies..."
+        if ! check_dependencies; then
             log ""
-            log "⚠️  Dependencies missing. Install them first:"
+            log "⚠️  Please install missing dependencies first:"
             log "   ./${SCRIPT_NAME} install"
             log ""
             log "Or force build with: ./${SCRIPT_NAME} build --force"
             exit 1
         fi
+        log "✅ All dependencies satisfied!"
+        log ""
     fi
 
     verbose "Cleaning build directory..."
@@ -287,7 +308,11 @@ build_gui() {
         log "📍 CLI Binary: $(pwd)/welle-cli"
 
         # Verify binaries exist
-        if [ -f "src/welle-io/welle-io" ]; then
+        if [ -f "welle-io" ]; then
+            log "✅ GUI binary confirmed"
+            log "🚀 To run Thailand DAB+ GUI:"
+            log "   cd $(pwd) && ./welle-io"
+        elif [ -f "src/welle-io/welle-io" ]; then
             log "✅ GUI binary confirmed"
             log "🚀 To run Thailand DAB+ GUI:"
             log "   cd $(pwd)/src/welle-io && ./welle-io"

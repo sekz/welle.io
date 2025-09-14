@@ -1,0 +1,7 @@
+cputime,start,0.023821592
+cputime,stop,3.160962377
+monotonic,start,423723.987566376
+monotonic,stop,423793.577535924
+cputime,diff,3.137140785
+monotonic,diff,69.589969548
+frames,decoded,0

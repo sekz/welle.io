@@ -30,6 +30,7 @@ import QtQuick.Controls.Universal
 import QtQuick.Window
 import Qt5Compat.GraphicalEffects
 import QtCore
+import Qt.labs.settings 1.0
 
 import "texts"
 import "settingpages"
@@ -922,7 +923,7 @@ ApplicationWindow {
         function onMinimizeWindow() {hide()}
         function onMaximizeWindow() {showMaximized()}
         function onRestoreWindow() {
-            // On Linux (KDE?): Hide before we restore 
+            // On Linux (KDE?): Hide before we restore
             // otherwise the window will occasionally not be brought to the front
             if (Qt.platform.os === "linux" && !active) // Linux Workaround to display the window
                 hide()
