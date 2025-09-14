@@ -31,7 +31,16 @@ open http://localhost:8080
 
 To build and run the native GUI application:
 
-### 1. Install Required Packages
+### 1. Quick Installation (Recommended)
+
+Use the provided installation helper:
+
+```bash
+cd welle.io
+./install-gui-deps.sh
+```
+
+### 1b. Manual Installation
 
 ```bash
 sudo apt update && sudo apt install -y \
