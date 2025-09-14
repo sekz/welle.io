@@ -104,7 +104,7 @@ The implemented framework fully supports official data integration when availabl
   ./docker-build.sh
   
   # Run CLI version with web interface
-  docker-compose up welle-cli-thailand
+  docker compose up welle-cli-thailand
   
   # Access web interface
   open http://localhost:8080
@@ -148,7 +148,7 @@ docker build -f Dockerfile.thailand -t welle-io-thailand:latest .
 #### CLI Mode (Web Interface)
 ```bash
 # Start welle-cli with web interface on port 8080
-docker-compose up welle-cli-thailand
+docker compose up welle-cli-thailand
 
 # Access web interface at http://localhost:8080
 ```
@@ -156,13 +156,13 @@ docker-compose up welle-cli-thailand
 #### GUI Mode (Linux Desktop)
 ```bash
 # Enable X11 forwarding for GUI
-docker-compose --profile gui up welle-gui-thailand
+docker compose --profile gui up welle-gui-thailand
 ```
 
 #### Development Mode
 ```bash
 # Start development container
-docker-compose --profile dev up welle-thailand-dev
+docker compose --profile dev up welle-thailand-dev
 ```
 
 ### Docker Features
@@ -184,7 +184,7 @@ For RTL-SDR support, ensure your USB device is properly connected:
 lsusb | grep RTL
 
 # Run with device access
-docker-compose up welle-cli-thailand
+docker compose up welle-cli-thailand
 ```
 
 The Docker containers automatically detect and configure RTL-SDR devices.

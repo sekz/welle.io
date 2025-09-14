@@ -1,0 +1,60 @@
+# Working Docker Compose for Thailand DAB+
+# Modern Docker Compose - no version field needed
+
+services:
+  # Simple welle-cli with web interface
+  welle-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile  # Use the working original Dockerfile
+    image: welle-cli-simple:latest
+    container_name: welle-cli-thailand
+    ports:
+      - "8080:8080"   # Web interface
+    volumes:
+      - ./resources/thailand:/thailand-config:ro
+      - ./logs:/logs
+    environment:
+      - LC_ALL=C.UTF-8  # Simple locale that works
+      - LANG=C.UTF-8
+    devices:
+      - /dev/bus/usb:/dev/bus/usb  # RTL-SDR support
+    privileged: true
+    restart: unless-stopped
+    # Start web server on channel 12B (Bangkok)
+    command: ["welle-cli", "-c", "12B", "-w", "8080"]
+
+  # Alternative: File-based testing
+  welle-cli-file:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: welle-cli-simple:latest
+    container_name: welle-cli-file
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./test-files:/test-files:ro
+      - ./logs:/logs
+    # Start web server reading from file (if available)
+    command: ["welle-cli", "-f", "/test-files/sample.iq", "-w", "8080"]
+    profiles: ["file-mode"]
+
+  # Development shell
+  welle-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: welle-cli-simple:latest
+    container_name: welle-cli-dev
+    volumes:
+      - .:/src
+      - ./logs:/logs
+    environment:
+      - LC_ALL=C.UTF-8
+      - LANG=C.UTF-8
+    working_dir: /src
+    command: ["/bin/bash"]
+    stdin_open: true
+    tty: true
+    profiles: ["dev"]
