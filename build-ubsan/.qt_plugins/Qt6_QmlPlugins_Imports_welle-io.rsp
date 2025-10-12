@@ -1,0 +1,9 @@
+-rootPath
+/home/seksan/workspace/welle.io-th
+-cmake-output
+-output-file
+/home/seksan/workspace/welle.io-th/build-ubsan/.qt_plugins/Qt6_QmlPlugins_Imports_welle-io.cmake
+-importPath
+/home/seksan/workspace/welle.io-th/build-ubsan
+-importPath
+/usr/lib/x86_64-linux-gnu/qt6/qml

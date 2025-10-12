@@ -532,21 +532,45 @@ int ThaiTextConverter::getUTF8SequenceLength(uint8_t first_byte) {
 }
 
 uint32_t ThaiTextConverter::utf8ToUnicode(const uint8_t* utf8_bytes, int length) {
+    // P1-002 Fix: Add null pointer check
+    if (!utf8_bytes) {
+        return 0xFFFD;  // Unicode replacement character
+    }
+    
+    // Validate length parameter
+    if (length < 1 || length > 4) {
+        return 0xFFFD;
+    }
+    
     if (length == 1) {
         return utf8_bytes[0];
     } else if (length == 2) {
+        // Validate UTF-8 continuation byte (must be 10xxxxxx)
+        if ((utf8_bytes[1] & 0xC0) != 0x80) {
+            return 0xFFFD;
+        }
         return ((utf8_bytes[0] & 0x1F) << 6) | (utf8_bytes[1] & 0x3F);
     } else if (length == 3) {
+        // Validate UTF-8 continuation bytes
+        if ((utf8_bytes[1] & 0xC0) != 0x80 || (utf8_bytes[2] & 0xC0) != 0x80) {
+            return 0xFFFD;
+        }
         return ((utf8_bytes[0] & 0x0F) << 12) | 
                ((utf8_bytes[1] & 0x3F) << 6) | 
                (utf8_bytes[2] & 0x3F);
     } else if (length == 4) {
+        // Validate UTF-8 continuation bytes
+        if ((utf8_bytes[1] & 0xC0) != 0x80 || 
+            (utf8_bytes[2] & 0xC0) != 0x80 || 
+            (utf8_bytes[3] & 0xC0) != 0x80) {
+            return 0xFFFD;
+        }
         return ((utf8_bytes[0] & 0x07) << 18) | 
                ((utf8_bytes[1] & 0x3F) << 12) | 
                ((utf8_bytes[2] & 0x3F) << 6) | 
                (utf8_bytes[3] & 0x3F);
     }
-    return 0;
+    return 0xFFFD;
 }
 
 std::vector<uint8_t> ThaiTextConverter::unicodeToUTF8(uint32_t codepoint) {

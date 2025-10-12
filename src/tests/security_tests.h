@@ -199,6 +199,16 @@ public:
      * Verifies: Excessive size triggers security log
      */
     bool testMOTContentSizeLogging();
+    
+    // ========================================================================
+    // Wave 5: P1 Issue Fixes Tests
+    // ========================================================================
+    
+    /**
+     * @brief Test P1-002: UTF-8 validation in utf8ToUnicode()
+     * Verifies: Null pointer check, continuation byte validation, bounds checking
+     */
+    bool testP1002_UTF8Validation();
 };
 
 #endif // SECURITY_TESTS_H

@@ -1,0 +1,429 @@
+/*
+ *    Copyright (C) 2024
+ *    welle.io Thailand DAB+ Compliance
+ *
+ *    This file is part of the welle.io Thailand DAB+ compliance implementation.
+ *    
+ *    welle.io is free software; you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation; either version 2 of the License, or
+ *    (at your option) any later version.
+ */
+
+#include "thai_service_parser.h"
+#include "charsets.h"
+#include <sstream>
+#include <algorithm>
+#include <iomanip>
+#include <ctime>
+
+// Programme type descriptions in Thai (ETSI EN 300 401 Table 9)
+const std::vector<std::string> ThaiServiceParser::PROGRAMME_TYPES_THAI = {
+    "ไม่ระบุ",              // 0 - No programme type
+    "ข่าว",                // 1 - News
+    "ข้อมูลทั่วไป",          // 2 - Current Affairs
+    "สารคดี",              // 3 - Information
+    "กีฬา",                // 4 - Sport
+    "การศึกษา",            // 5 - Education
+    "ละคร",                // 6 - Drama
+    "วัฒนธรรม",            // 7 - Culture
+    "วิทยาศาสตร์",         // 8 - Science
+    "บันเทิงเบ็ดเตล็ด",    // 9 - Varied
+    "เพลงป็อป",            // 10 - Pop Music
+    "เพลงร็อค",            // 11 - Rock Music
+    "เพลงคลาสสิค",         // 12 - Easy Listening Music
+    "เพลงเบา",             // 13 - Light Classical
+    "เพลงคลาสสิกจริงจัง",   // 14 - Serious Classical
+    "เพลงพื้นบ้าน",        // 15 - Other Music
+    "สภาพอากาศ",          // 16 - Weather/Meteorology
+    "การเงิน",             // 17 - Finance/Business
+    "รายการเด็ก",          // 18 - Children's programmes
+    "สังคม",               // 19 - Social Affairs
+    "ศาสนา",               // 20 - Religion
+    "โทรถึงผู้ฟัง",         // 21 - Phone In
+    "ท่องเที่ยว",          // 22 - Travel
+    "งานอดิเรก",           // 23 - Leisure
+    "เพลงแจ๊ส",            // 24 - Jazz Music
+    "เพลงคันทรี",          // 25 - Country Music
+    "เพลงชาติพันธุ์",       // 26 - National Music
+    "เพลงเก่า",            // 27 - Oldies Music
+    "เพลงพื้นบ้าน",        // 28 - Folk Music
+    "สารคดี",              // 29 - Documentary
+    "รายการทดลอง",         // 30 - Alarm Test
+    "รายการเตือนภัย"        // 31 - Alarm
+};
+
+// Programme type descriptions in English
+const std::vector<std::string> ThaiServiceParser::PROGRAMME_TYPES_ENGLISH = {
+    "None",                 // 0
+    "News",                 // 1
+    "Current Affairs",      // 2
+    "Information",          // 3
+    "Sport",                // 4
+    "Education",            // 5
+    "Drama",                // 6
+    "Culture",              // 7
+    "Science",              // 8
+    "Varied",               // 9
+    "Pop Music",            // 10
+    "Rock Music",           // 11
+    "Easy Listening",       // 12
+    "Light Classical",      // 13
+    "Serious Classical",    // 14
+    "Other Music",          // 15
+    "Weather",              // 16
+    "Finance",              // 17
+    "Children's Programmes", // 18
+    "Social Affairs",       // 19
+    "Religion",             // 20
+    "Phone In",             // 21
+    "Travel",               // 22
+    "Leisure",              // 23
+    "Jazz Music",           // 24
+    "Country Music",        // 25
+    "National Music",       // 26
+    "Oldies Music",         // 27
+    "Folk Music",           // 28
+    "Documentary",          // 29
+    "Alarm Test",           // 30
+    "Alarm"                 // 31
+};
+
+ThaiServiceParser::ThaiServiceInfo ThaiServiceParser::parseThaiService(const FIG1_Data& fig1_data) {
+    ThaiServiceInfo service;
+    
+    // Initialize service info
+    service.service_id = fig1_data.service_id;
+    service.label_charset = getCharacterSetFromFlag(fig1_data.charset_flag);
+    service.emergency_support = false;
+    service.traffic_support = false;
+    service.mixed_language_support = false;
+    service.programme_type_code = 0;
+    service.service_component_id = 0;
+    
+    // Parse service label based on character set
+    if (fig1_data.label_data && fig1_data.label_length > 0) {
+        std::string full_label = extractThaiText(fig1_data.label_data, fig1_data.label_length, service.label_charset);
+        
+        // Try to parse mixed language content
+        if (parseMixedLanguageContent(fig1_data.label_data, fig1_data.label_length, service.label_charset,
+                                    service.thai_label, service.english_label)) {
+            service.mixed_language_support = true;
+        } else {
+            // Single language content
+            if (containsThaiCharacters(full_label)) {
+                service.thai_label = full_label;
+            } else {
+                service.english_label = full_label;
+            }
+        }
+        
+        // If no Thai label but has English, create basic Thai label
+        if (service.thai_label.empty() && !service.english_label.empty()) {
+            service.thai_label = "สถานี: " + service.english_label;
+        }
+    }
+    
+    // Set programme type descriptions
+    if (service.programme_type_code < PROGRAMME_TYPES_THAI.size()) {
+        service.programme_type_thai = PROGRAMME_TYPES_THAI[service.programme_type_code];
+        service.programme_type_english = PROGRAMME_TYPES_ENGLISH[service.programme_type_code];
+    }
+    
+    return service;
+}
+
+ThaiServiceParser::ThaiDLSInfo ThaiServiceParser::parseThaiDLS(const uint8_t* dls_data, size_t length) {
+    ThaiDLSInfo dls_info;
+    
+    if (!dls_data || length < 4) {
+        return dls_info;
+    }
+    
+    // Parse DLS header
+    dls_info.segment_number = (dls_data[0] >> 4) & 0x0F;
+    dls_info.toggle_flag = (dls_data[0] >> 3) & 0x01;
+    dls_info.command_flag = (dls_data[0] >> 2) & 0x01;
+    
+    // Extract character set from DLS data
+    uint8_t charset_flag = dls_data[1] & 0x0F;
+    dls_info.charset = getCharacterSetFromFlag(charset_flag);
+    
+    // Parse DLS text content
+    if (length > 4) {
+        const uint8_t* text_data = &dls_data[4];
+        size_t text_length = length - 4;
+        
+        std::string full_text = extractThaiText(text_data, text_length, dls_info.charset);
+        
+        // Try to parse mixed language DLS content
+        if (parseMixedLanguageContent(text_data, text_length, dls_info.charset,
+                                    dls_info.text_thai, dls_info.text_english)) {
+            // Mixed content successfully parsed
+        } else {
+            // Single language content
+            if (containsThaiCharacters(full_text)) {
+                dls_info.text_thai = full_text;
+            } else {
+                dls_info.text_english = full_text;
+            }
+        }
+    }
+    
+    // Generate timestamp (thread-safe)
+    std::time_t now = std::time(nullptr);
+    std::tm local_time_buf{};
+    
+#ifdef _WIN32
+    // Windows: localtime_s(dest, src)
+    if (localtime_s(&local_time_buf, &now) != 0) {
+        dls_info.timestamp = "1970-01-01 00:00:00";  // Epoch fallback
+        return dls_info;
+    }
+#else
+    // POSIX (Linux/macOS/Android): localtime_r(src, dest)
+    if (localtime_r(&now, &local_time_buf) == nullptr) {
+        dls_info.timestamp = "1970-01-01 00:00:00";  // Epoch fallback
+        return dls_info;
+    }
+#endif
+    
+    std::stringstream ss;
+    ss << std::put_time(&local_time_buf, "%Y-%m-%d %H:%M:%S");
+    dls_info.timestamp = ss.str();
+    
+    return dls_info;
+}
+
+ThaiServiceParser::MOTSlideShowInfo ThaiServiceParser::parseThaiMOTSlideShow(const uint8_t* mot_data, size_t length) {
+    MOTSlideShowInfo slide_info;
+    
+    if (!mot_data || length < 8) {
+        return slide_info;
+    }
+    
+    // Parse MOT header
+    slide_info.transport_id = (mot_data[0] << 8) | mot_data[1];
+    slide_info.content_size = (mot_data[2] << 24) | (mot_data[3] << 16) | (mot_data[4] << 8) | mot_data[5];
+    
+    // Look for MOT extension headers with Thai captions
+    size_t pos = 8;
+    while (pos < length - 4) {
+        uint8_t header_type = mot_data[pos];
+        uint8_t header_length = mot_data[pos + 1];
+        
+        if (header_type == 0x25 && header_length > 2) { // Content Description
+            uint8_t charset_flag = mot_data[pos + 2];
+            slide_info.caption_charset = getCharacterSetFromFlag(charset_flag);
+            
+            if (pos + 3 + header_length <= length) {
+                const uint8_t* caption_data = &mot_data[pos + 3];
+                size_t caption_length = header_length - 1;
+                
+                std::string full_caption = extractThaiText(caption_data, caption_length, slide_info.caption_charset);
+                
+                // Parse mixed language captions
+                if (parseMixedLanguageContent(caption_data, caption_length, slide_info.caption_charset,
+                                            slide_info.caption_thai, slide_info.caption_english)) {
+                    // Mixed content successfully parsed
+                } else {
+                    if (containsThaiCharacters(full_caption)) {
+                        slide_info.caption_thai = full_caption;
+                    } else {
+                        slide_info.caption_english = full_caption;
+                    }
+                }
+            }
+        }
+        
+        pos += 2 + header_length;
+    }
+    
+    return slide_info;
+}
+
+std::string ThaiServiceParser::extractThaiText(const uint8_t* label_data, size_t length, CharacterSet charset) {
+    if (!label_data || length == 0) {
+        return "";
+    }
+    
+    return toUtf8StringUsingCharset(label_data, charset, length);
+}
+
+bool ThaiServiceParser::parseMixedLanguageContent(const uint8_t* data, size_t length, CharacterSet charset,
+                                                std::string& thai_text, std::string& english_text) {
+    if (!data || length == 0) {
+        return false;
+    }
+    
+    // Convert full text first
+    std::string full_text = extractThaiText(data, length, charset);
+    
+    // Simple heuristic: split on common separators and classify each part
+    std::vector<std::string> parts;
+    std::stringstream ss(full_text);
+    std::string part;
+    
+    // Split on common separators
+    while (std::getline(ss, part, '/')) {
+        if (!part.empty()) {
+            parts.push_back(part);
+        }
+    }
+    
+    if (parts.size() < 2) {
+        // Try other separators
+        parts.clear();
+        ss.clear();
+        ss.str(full_text);
+        while (std::getline(ss, part, '|')) {
+            if (!part.empty()) {
+                parts.push_back(part);
+            }
+        }
+    }
+    
+    if (parts.size() >= 2) {
+        // Classify parts as Thai or English
+        for (const auto& p : parts) {
+            std::string trimmed = p;
+            // Simple trim
+            trimmed.erase(0, trimmed.find_first_not_of(" \t\n\r"));
+            trimmed.erase(trimmed.find_last_not_of(" \t\n\r") + 1);
+            
+            if (containsThaiCharacters(trimmed)) {
+                if (thai_text.empty()) {
+                    thai_text = trimmed;
+                }
+            } else {
+                if (english_text.empty()) {
+                    english_text = trimmed;
+                }
+            }
+        }
+        
+        return !thai_text.empty() || !english_text.empty();
+    }
+    
+    return false;
+}
+
+std::string ThaiServiceParser::getProgrammeTypeThai(uint8_t programme_type_code) {
+    if (programme_type_code < PROGRAMME_TYPES_THAI.size()) {
+        return PROGRAMME_TYPES_THAI[programme_type_code];
+    }
+    return "ไม่ระบุ";
+}
+
+std::string ThaiServiceParser::getProgrammeTypeEnglish(uint8_t programme_type_code) {
+    if (programme_type_code < PROGRAMME_TYPES_ENGLISH.size()) {
+        return PROGRAMME_TYPES_ENGLISH[programme_type_code];
+    }
+    return "None";
+}
+
+bool ThaiServiceParser::isValidThaiText(const std::string& text) {
+    return containsThaiCharacters(text);
+}
+
+std::string ThaiServiceParser::formatServiceForDisplay(const ThaiServiceInfo& service_info, bool prefer_thai) {
+    std::stringstream display;
+    
+    if (prefer_thai && !service_info.thai_label.empty()) {
+        display << service_info.thai_label;
+        if (!service_info.english_label.empty()) {
+            display << " (" << service_info.english_label << ")";
+        }
+    } else if (!service_info.english_label.empty()) {
+        display << service_info.english_label;
+        if (!service_info.thai_label.empty()) {
+            display << " (" << service_info.thai_label << ")";
+        }
+    } else {
+        display << "Service 0x" << std::hex << service_info.service_id;
+    }
+    
+    // Add programme type
+    if (prefer_thai && !service_info.programme_type_thai.empty()) {
+        display << " - " << service_info.programme_type_thai;
+    } else if (!service_info.programme_type_english.empty()) {
+        display << " - " << service_info.programme_type_english;
+    }
+    
+    return display.str();
+}
+
+CharacterSet ThaiServiceParser::getCharacterSetFromFlag(uint8_t charset_flag) {
+    switch (charset_flag) {
+        case 0x00:
+            return CharacterSet::EbuLatin;
+        case 0x06:
+            return CharacterSet::UnicodeUcs2;
+        case 0x0E:
+            return CharacterSet::ThaiProfile;
+        case 0x0F:
+            return CharacterSet::UnicodeUtf8;
+        default:
+            return CharacterSet::EbuLatin;
+    }
+}
+
+std::string ThaiServiceParser::parseDLSSegment(const uint8_t* segment_data, size_t segment_length) {
+    if (!segment_data || segment_length == 0) {
+        return "";
+    }
+    
+    // Basic DLS segment parsing
+    std::string result;
+    for (size_t i = 0; i < segment_length; i++) {
+        if (segment_data[i] != 0x00) { // Skip null bytes
+            result += static_cast<char>(segment_data[i]);
+        }
+    }
+    
+    return result;
+}
+
+std::string ThaiServiceParser::decodeTIS620ToUTF8(const uint8_t* tis620_data, size_t length) {
+    if (!tis620_data || length == 0) {
+        return "";
+    }
+    
+    std::string result;
+    for (size_t i = 0; i < length; i++) {
+        uint8_t byte = tis620_data[i];
+        
+        if (byte >= 0x20 && byte <= 0x7F) {
+            // ASCII range
+            result += static_cast<char>(byte);
+        } else if (byte >= 0xA1 && byte <= 0xFE) {
+            // Thai character range - convert to UTF-8
+            uint16_t unicode = 0x0E00 + (byte - 0xA0);
+            
+            // Convert to UTF-8
+            if (unicode <= 0x7FF) {
+                result += static_cast<char>(0xC0 | (unicode >> 6));
+                result += static_cast<char>(0x80 | (unicode & 0x3F));
+            } else {
+                result += static_cast<char>(0xE0 | (unicode >> 12));
+                result += static_cast<char>(0x80 | ((unicode >> 6) & 0x3F));
+                result += static_cast<char>(0x80 | (unicode & 0x3F));
+            }
+        }
+    }
+    
+    return result;
+}
+
+bool ThaiServiceParser::containsThaiCharacters(const std::string& text) {
+    // Simple check for Thai UTF-8 sequences (0xE0 0xB8-0xBB)
+    for (size_t i = 0; i < text.length(); i++) {
+        if (static_cast<unsigned char>(text[i]) == 0xE0 && i + 2 < text.length()) {
+            unsigned char b2 = static_cast<unsigned char>(text[i + 1]);
+            if (b2 >= 0xB8 && b2 <= 0xBB) {
+                return true;
+            }
+        }
+    }
+    return false;
+}

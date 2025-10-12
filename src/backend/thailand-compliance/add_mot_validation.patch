@@ -1,0 +1,15 @@
+--- thai_service_parser.cpp.orig
++++ thai_service_parser.cpp
+@@ -16,6 +16,12 @@
+ #include <iomanip>
+ #include <ctime>
+ 
++// MOT Security Limits
++static const size_t MAX_MOT_HEADER_SIZE = 255;
++static const size_t MAX_MOT_CAPTION_LENGTH = 256;
++static const size_t MAX_LABEL_LENGTH = 256;
++static const size_t MOT_MIN_HEADER_SIZE = 8;
++
+ // Programme type descriptions in Thai (ETSI EN 300 401 Table 9)
+ const std::vector<std::string> ThaiServiceParser::PROGRAMME_TYPES_THAI = {
+     "ไม่ระบุ",              // 0 - No programme type

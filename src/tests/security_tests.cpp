@@ -13,6 +13,7 @@
 #include "security_tests.h"
 #include "../backend/thailand-compliance/thai_service_parser.h"
 #include "../backend/thailand-compliance/security_logger.h"
+#include "../various/thai_text_converter.h"
 #include <iostream>
 #include <cassert>
 #include <cstring>
@@ -76,6 +77,10 @@ bool SecurityTests::runAllTests() {
     total++; if (testMOTContentSizeValidation()) passed++;
     total++; if (testMOTContentSizeBoundaries()) passed++;
     total++; if (testMOTContentSizeLogging()) passed++;
+    
+    // Wave 5: P1 Issue Fixes Tests
+    std::cout << "\n--- Wave 5: P1 Issue Fixes ---" << std::endl;
+    total++; if (testP1002_UTF8Validation()) passed++;
     
     std::cout << "\n========================================" << std::endl;
     std::cout << "Security Tests: " << passed << "/" << total << " passed";
@@ -725,4 +730,70 @@ bool SecurityTests::testMOTContentSizeLogging() {
     std::cout << (passed ? "PASS ✓" : "FAIL ✗") 
               << " (" << counts.warning << " warnings)" << std::endl;
     return passed;
+}
+
+// ============================================================================
+// Wave 5: P1 Issue Fixes Tests
+// ============================================================================
+
+bool SecurityTests::testP1002_UTF8Validation() {
+    std::cout << "  [TEST] P1-002: UTF-8 validation in utf8ToUnicode()... ";
+
+    bool all_passed = true;
+    const uint32_t REPLACEMENT_CHAR = 0xFFFD;
+
+    // Test 1: Null pointer check
+    uint32_t result1 = ThaiTextConverter::utf8ToUnicode(nullptr, 2);
+    all_passed &= (result1 == REPLACEMENT_CHAR);
+
+    // Test 2: Invalid length (0)
+    uint8_t valid_2byte[] = {0xC3, 0xA9};  // é
+    uint32_t result2 = ThaiTextConverter::utf8ToUnicode(valid_2byte, 0);
+    all_passed &= (result2 == REPLACEMENT_CHAR);
+
+    // Test 3: Invalid length (> 4)
+    uint32_t result3 = ThaiTextConverter::utf8ToUnicode(valid_2byte, 5);
+    all_passed &= (result3 == REPLACEMENT_CHAR);
+
+    // Test 4: Valid 2-byte UTF-8 (é = U+00E9)
+    uint32_t result4 = ThaiTextConverter::utf8ToUnicode(valid_2byte, 2);
+    all_passed &= (result4 == 0x00E9);
+
+    // Test 5: Invalid 2-byte UTF-8 (bad continuation byte)
+    uint8_t invalid_2byte[] = {0xC3, 0x20};  // Second byte is not continuation
+    uint32_t result5 = ThaiTextConverter::utf8ToUnicode(invalid_2byte, 2);
+    all_passed &= (result5 == REPLACEMENT_CHAR);
+
+    // Test 6: Valid 3-byte UTF-8 (Thai ท = U+0E17)
+    uint8_t valid_3byte[] = {0xE0, 0xB8, 0x97};  // ท
+    uint32_t result6 = ThaiTextConverter::utf8ToUnicode(valid_3byte, 3);
+    all_passed &= (result6 == 0x0E17);
+
+    // Test 7: Invalid 3-byte UTF-8 (bad second continuation byte)
+    uint8_t invalid_3byte_1[] = {0xE0, 0x20, 0x97};  // Second byte not continuation
+    uint32_t result7 = ThaiTextConverter::utf8ToUnicode(invalid_3byte_1, 3);
+    all_passed &= (result7 == REPLACEMENT_CHAR);
+
+    // Test 8: Invalid 3-byte UTF-8 (bad third continuation byte)
+    uint8_t invalid_3byte_2[] = {0xE0, 0xB8, 0x20};  // Third byte not continuation
+    uint32_t result8 = ThaiTextConverter::utf8ToUnicode(invalid_3byte_2, 3);
+    all_passed &= (result8 == REPLACEMENT_CHAR);
+
+    // Test 9: Valid 4-byte UTF-8 (Emoji 😀 = U+1F600)
+    uint8_t valid_4byte[] = {0xF0, 0x9F, 0x98, 0x80};
+    uint32_t result9 = ThaiTextConverter::utf8ToUnicode(valid_4byte, 4);
+    all_passed &= (result9 == 0x1F600);
+
+    // Test 10: Invalid 4-byte UTF-8 (bad continuation bytes)
+    uint8_t invalid_4byte[] = {0xF0, 0x9F, 0x20, 0x80};  // Third byte not continuation
+    uint32_t result10 = ThaiTextConverter::utf8ToUnicode(invalid_4byte, 4);
+    all_passed &= (result10 == REPLACEMENT_CHAR);
+
+    // Test 11: Single ASCII byte
+    uint8_t ascii[] = {0x41};  // 'A'
+    uint32_t result11 = ThaiTextConverter::utf8ToUnicode(ascii, 1);
+    all_passed &= (result11 == 0x41);
+
+    std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (11 sub-tests)" << std::endl;
+    return all_passed;
 }

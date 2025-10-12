@@ -190,6 +190,9 @@ public:
     static ThaiDisplayProperties getRecommendedDisplayProperties(size_t text_length, 
                                                                const std::string& display_context);
 
+    // Friend class for security testing
+    friend class SecurityTests;
+
 private:
     // Thai character ranges in Unicode
     static const uint16_t THAI_BLOCK_START = 0x0E00;

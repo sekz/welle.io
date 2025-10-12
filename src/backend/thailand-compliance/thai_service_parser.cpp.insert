@@ -1,0 +1,36 @@
+
+// Validate MOT extension header before parsing
+static bool validateMOTHeader(const uint8_t* data, size_t length, size_t pos, uint8_t header_length) {
+    // Null pointer check
+    if (!data) {
+        return false;
+    }
+    
+    // Position within bounds
+    if (pos >= length) {
+        return false;
+    }
+    
+    // Minimum header size (type + length bytes)
+    if (pos + 2 > length) {
+        return false;
+    }
+    
+    // Integer overflow prevention - check if addition would overflow
+    if (header_length > length - pos - 2) {
+        return false;
+    }
+    
+    // Maximum size enforcement
+    if (header_length > MAX_MOT_HEADER_SIZE) {
+        return false;
+    }
+    
+    // Full header accessibility
+    if (pos + 2 + header_length > length) {
+        return false;
+    }
+    
+    return true;
+}
+
