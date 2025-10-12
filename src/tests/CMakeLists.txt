@@ -66,6 +66,10 @@ add_executable(test_security
     test_security_runner.cpp
     security_tests.cpp
     security_tests.h
+    # Include source files directly for testing
+    ${CMAKE_SOURCE_DIR}/src/backend/thailand-compliance/thai_service_parser.cpp
+    ${CMAKE_SOURCE_DIR}/src/backend/charsets.cpp
+    ${CMAKE_SOURCE_DIR}/src/various/thai_text_converter.cpp
 )
 
 # Include directories
@@ -75,10 +79,9 @@ target_include_directories(test_security PRIVATE
     ${CMAKE_SOURCE_DIR}/src/backend/thailand-compliance
 )
 
-# Link libraries
+# Link libraries (using Qt6 and system libraries directly)
 target_link_libraries(test_security
-    backend_common
-    thailand_compliance
+    Qt6::Core
     pthread
 )
 

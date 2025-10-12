@@ -23,9 +23,6 @@ static const size_t MAX_MOT_CAPTION_LENGTH = 256;
 static const size_t MAX_LABEL_LENGTH = 256;
 static const size_t MOT_MIN_HEADER_SIZE = 8;
 
-// Programme type descriptions in Thai (ETSI EN 300 401 Table 9)
-const std::vector<std::string> ThaiServiceParser::PROGRAMME_TYPES_THAI = {
-
 // Validate MOT extension header before parsing
 static bool validateMOTHeader(const uint8_t* data, size_t length, size_t pos, uint8_t header_length) {
     // Null pointer check
@@ -61,6 +58,8 @@ static bool validateMOTHeader(const uint8_t* data, size_t length, size_t pos, ui
     return true;
 }
 
+// Programme type descriptions in Thai (ETSI EN 300 401 Table 9)
+const std::vector<std::string> ThaiServiceParser::PROGRAMME_TYPES_THAI = {
     "ไม่ระบุ",              // 0 - No programme type
     "ข่าว",                // 1 - News
     "ข้อมูลทั่วไป",          // 2 - Current Affairs

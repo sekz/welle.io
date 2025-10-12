@@ -534,3 +534,10 @@ if(Qt6Core_FOUND)
     qt6_finalize_project()
   endif()
 endif()
+
+
+# Thailand DAB+ Tests
+if(BUILD_THAILAND_TESTS)
+    add_subdirectory(src/tests)
+endif()
+
