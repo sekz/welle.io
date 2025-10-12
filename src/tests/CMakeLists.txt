@@ -60,3 +60,52 @@ if(BUILD_THAILAND_TESTS)
 else()
     message(STATUS "Thailand compliance tests disabled")
 endif()
+
+# Security test executable
+add_executable(test_security
+    test_security_runner.cpp
+    security_tests.cpp
+    security_tests.h
+)
+
+# Include directories
+target_include_directories(test_security PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/backend
+    ${CMAKE_SOURCE_DIR}/src/various
+    ${CMAKE_SOURCE_DIR}/src/backend/thailand-compliance
+)
+
+# Link libraries
+target_link_libraries(test_security
+    backend_common
+    thailand_compliance
+    pthread
+)
+
+# Compiler features
+target_compile_features(test_security PRIVATE cxx_std_14)
+
+# Add test definitions
+target_compile_definitions(test_security PRIVATE
+    THAILAND_DAB_SUPPORT=1
+    TESTING_MODE=1
+)
+
+# Add to CTest if enabled
+if(BUILD_TESTING)
+    add_test(
+        NAME security_tests
+        COMMAND test_security
+    )
+    set_tests_properties(security_tests PROPERTIES
+        TIMEOUT 120
+        LABELS "security;critical"
+    )
+endif()
+
+# Install test executable
+install(TARGETS test_security
+    RUNTIME DESTINATION bin/tests
+)
+
+message(STATUS "Security test suite configured")
