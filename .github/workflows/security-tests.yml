@@ -1,0 +1,369 @@
+name: Security Tests
+
+on:
+  push:
+    branches: [ master, main, develop ]
+    paths:
+      - 'src/backend/thailand-compliance/**'
+      - 'src/tests/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/security-tests.yml'
+  pull_request:
+    branches: [ master, main, develop ]
+    paths:
+      - 'src/backend/thailand-compliance/**'
+      - 'src/tests/**'
+      - 'CMakeLists.txt'
+  workflow_dispatch:
+
+jobs:
+  # Standard build with security tests
+  security-tests:
+    name: Security Tests (Standard Build)
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          qt6-base-dev \
+          qt6-declarative-dev \
+          qt6-multimedia-dev \
+          qt6-tools-dev \
+          libqt6charts6-dev \
+          qt6-5compat-dev \
+          libfftw3-dev \
+          libfaad-dev \
+          libmpg123-dev \
+          libasound2-dev \
+          libmp3lame-dev \
+          libusb-1.0-0-dev \
+          librtlsdr-dev \
+          libairspy-dev \
+          libsoapysdr-dev
+
+    - name: Configure CMake
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DBUILD_THAILAND_TESTS=ON \
+          -DRTLSDR=1 \
+          -DSOAPYSDR=1 \
+          -DAIRSPY=1
+
+    - name: Build security tests
+      run: |
+        cd build
+        make test_security -j$(nproc)
+
+    - name: Run security tests
+      run: |
+        cd build/src/tests
+        ./test_security
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-test-results
+        path: |
+          build/src/tests/test_security
+          /tmp/welle_security_test.log
+        retention-days: 30
+
+  # AddressSanitizer build
+  asan-tests:
+    name: AddressSanitizer Tests
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          qt6-base-dev \
+          qt6-declarative-dev \
+          qt6-multimedia-dev \
+          qt6-tools-dev \
+          libqt6charts6-dev \
+          qt6-5compat-dev \
+          libfftw3-dev \
+          libfaad-dev \
+          libmpg123-dev \
+          libasound2-dev \
+          libmp3lame-dev \
+          libusb-1.0-0-dev \
+          librtlsdr-dev \
+          libairspy-dev \
+          libsoapysdr-dev
+
+    - name: Configure CMake with ASan
+      run: |
+        mkdir -p build-asan
+        cd build-asan
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_CXX_FLAGS="-fsanitize=address -fno-omit-frame-pointer -g" \
+          -DCMAKE_C_FLAGS="-fsanitize=address -fno-omit-frame-pointer -g" \
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address" \
+          -DBUILD_THAILAND_TESTS=ON \
+          -DRTLSDR=1 \
+          -DSOAPYSDR=1 \
+          -DAIRSPY=1
+
+    - name: Build with ASan
+      run: |
+        cd build-asan
+        make test_security -j$(nproc)
+
+    - name: Run security tests with ASan
+      run: |
+        cd build-asan/src/tests
+        ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 ./test_security
+
+    - name: Upload ASan results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: asan-test-results
+        path: build-asan/src/tests/test_security
+        retention-days: 30
+
+  # UndefinedBehaviorSanitizer build
+  ubsan-tests:
+    name: UndefinedBehaviorSanitizer Tests
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          qt6-base-dev \
+          qt6-declarative-dev \
+          qt6-multimedia-dev \
+          qt6-tools-dev \
+          libqt6charts6-dev \
+          qt6-5compat-dev \
+          libfftw3-dev \
+          libfaad-dev \
+          libmpg123-dev \
+          libasound2-dev \
+          libmp3lame-dev \
+          libusb-1.0-0-dev \
+          librtlsdr-dev \
+          libairspy-dev \
+          libsoapysdr-dev
+
+    - name: Configure CMake with UBSan
+      run: |
+        mkdir -p build-ubsan
+        cd build-ubsan
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+          -DCMAKE_CXX_FLAGS="-fsanitize=undefined -fno-sanitize-recover=all -g" \
+          -DCMAKE_C_FLAGS="-fsanitize=undefined -fno-sanitize-recover=all -g" \
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=undefined" \
+          -DBUILD_THAILAND_TESTS=ON \
+          -DRTLSDR=1 \
+          -DSOAPYSDR=1 \
+          -DAIRSPY=1
+
+    - name: Build with UBSan
+      run: |
+        cd build-ubsan
+        make test_security -j$(nproc)
+
+    - name: Run security tests with UBSan
+      run: |
+        cd build-ubsan/src/tests
+        UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1 ./test_security
+
+    - name: Upload UBSan results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ubsan-test-results
+        path: build-ubsan/src/tests/test_security
+        retention-days: 30
+
+  # Build main executables and verify they link correctly with security fixes
+  build-verification:
+    name: Build Verification (CLI & GUI)
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          cmake \
+          qt6-base-dev \
+          qt6-declarative-dev \
+          qt6-multimedia-dev \
+          qt6-tools-dev \
+          libqt6charts6-dev \
+          qt6-5compat-dev \
+          libfftw3-dev \
+          libfaad-dev \
+          libmpg123-dev \
+          libasound2-dev \
+          libmp3lame-dev \
+          libusb-1.0-0-dev \
+          librtlsdr-dev \
+          libairspy-dev \
+          libsoapysdr-dev
+
+    - name: Configure CMake
+      run: |
+        mkdir -p build
+        cd build
+        cmake .. \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_WELLE_IO=ON \
+          -DBUILD_WELLE_CLI=ON \
+          -DRTLSDR=1 \
+          -DSOAPYSDR=1 \
+          -DAIRSPY=1
+
+    - name: Build welle-cli
+      run: |
+        cd build
+        make welle-cli -j$(nproc)
+
+    - name: Build welle-io
+      run: |
+        cd build
+        make welle-io -j$(nproc)
+
+    - name: Verify executables
+      run: |
+        cd build
+        ./welle-cli -h
+        echo "CLI build verified"
+        # GUI can't run headless, just check it exists
+        test -f ./welle-io && echo "GUI build verified"
+
+    - name: Upload artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          build/welle-cli
+          build/welle-io
+        retention-days: 7
+
+  # Security report generation
+  security-report:
+    name: Generate Security Report
+    needs: [security-tests, asan-tests, ubsan-tests, build-verification]
+    runs-on: ubuntu-22.04
+    if: always()
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Generate security report
+      run: |
+        echo "# Security Test Report" > security-report.md
+        echo "" >> security-report.md
+        echo "**Build Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> security-report.md
+        echo "**Commit:** ${{ github.sha }}" >> security-report.md
+        echo "**Branch:** ${{ github.ref_name }}" >> security-report.md
+        echo "" >> security-report.md
+        echo "## Test Results" >> security-report.md
+        echo "" >> security-report.md
+
+        if [ "${{ needs.security-tests.result }}" == "success" ]; then
+          echo "- ✅ **Security Tests:** PASS" >> security-report.md
+        else
+          echo "- ❌ **Security Tests:** FAIL" >> security-report.md
+        fi
+
+        if [ "${{ needs.asan-tests.result }}" == "success" ]; then
+          echo "- ✅ **AddressSanitizer:** PASS" >> security-report.md
+        else
+          echo "- ❌ **AddressSanitizer:** FAIL" >> security-report.md
+        fi
+
+        if [ "${{ needs.ubsan-tests.result }}" == "success" ]; then
+          echo "- ✅ **UndefinedBehaviorSanitizer:** PASS" >> security-report.md
+        else
+          echo "- ❌ **UndefinedBehaviorSanitizer:** FAIL" >> security-report.md
+        fi
+
+        if [ "${{ needs.build-verification.result }}" == "success" ]; then
+          echo "- ✅ **Build Verification:** PASS" >> security-report.md
+        else
+          echo "- ❌ **Build Verification:** FAIL" >> security-report.md
+        fi
+
+        echo "" >> security-report.md
+        echo "## Security Fixes Validated" >> security-report.md
+        echo "" >> security-report.md
+        echo "- BUG-001: Buffer overflow in MOT parsing (6-layer validation)" >> security-report.md
+        echo "- SECURITY-001: Thread-unsafe localtime() (localtime_r/localtime_s)" >> security-report.md
+        echo "- BUG-002: Raw pointer ownership (const pointer)" >> security-report.md
+        echo "- Wave 2: SecurityLogger implementation (thread-safe logging)" >> security-report.md
+        echo "- Wave 3: MOT content_size validation (16MB limit)" >> security-report.md
+
+        cat security-report.md
+
+    - name: Upload security report
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-report
+        path: security-report.md
+        retention-days: 90
+
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const report = fs.readFileSync('security-report.md', 'utf8');
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: report
+          });
