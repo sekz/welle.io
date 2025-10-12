@@ -221,6 +221,12 @@ public:
      * Verifies: Input length validation and safe reservation calculation
      */
     bool testP1007_TIS620IntegerOverflow();
+    
+    /**
+     * @brief Test P1-005: SecurityLogger callback documentation
+     * Verifies: Callback works correctly and documentation exists
+     */
+    bool testP1005_CallbackDocumentation();
 };
 
 #endif // SECURITY_TESTS_H

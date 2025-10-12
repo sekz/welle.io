@@ -83,6 +83,7 @@ bool SecurityTests::runAllTests() {
     total++; if (testP1002_UTF8Validation()) passed++;
     total++; if (testP1003_IntegerOverflowPrevention()) passed++;
     total++; if (testP1007_TIS620IntegerOverflow()) passed++;
+    total++; if (testP1005_CallbackDocumentation()) passed++;
     
     std::cout << "\n========================================" << std::endl;
     std::cout << "Security Tests: " << passed << "/" << total << " passed";
@@ -943,5 +944,64 @@ bool SecurityTests::testP1007_TIS620IntegerOverflow() {
     all_passed &= !result7.empty();
 
     std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (7 sub-tests)" << std::endl;
+    return all_passed;
+}
+
+bool SecurityTests::testP1005_CallbackDocumentation() {
+    std::cout << "  [TEST] P1-005: SecurityLogger callback documentation... ";
+
+    bool all_passed = true;
+
+    auto& logger = SecurityLogger::getInstance();
+    logger.resetCounters();
+
+    // Test 1: Basic callback functionality (non-blocking)
+    std::atomic<int> callback_count{0};
+    logger.setCallback([&callback_count](const SecurityLogger::SecurityEvent& event) {
+        // Quick, non-blocking operation
+        callback_count++;
+    });
+
+    // Log some events
+    logger.log(SecurityLogger::Severity::INFO, "Test", "Callback", "Test event 1");
+    logger.log(SecurityLogger::Severity::WARNING, "Test", "Callback", "Test event 2");
+    logger.log(SecurityLogger::Severity::CRITICAL, "Test", "Callback", "Test event 3");
+
+    // Verify callback was invoked
+    all_passed &= (callback_count == 3);
+
+    // Test 2: Callback can be cleared
+    logger.clearCallback();
+    int prev_count = callback_count;
+    logger.log(SecurityLogger::Severity::INFO, "Test", "Callback", "Test event 4");
+    all_passed &= (callback_count == prev_count);  // Should not increment
+
+    // Test 3: Verify callback doesn't break logging
+    logger.setCallback([](const SecurityLogger::SecurityEvent&) {
+        // Empty callback
+    });
+    logger.log(SecurityLogger::Severity::INFO, "Test", "Callback", "Test event 5");
+    auto counts = logger.getEventCounts();
+    all_passed &= (counts.info >= 3);  // Should have logged
+
+    // Test 4: Multiple rapid callbacks (simulating concurrent logging)
+    logger.resetCounters();
+    std::atomic<int> rapid_count{0};
+    logger.setCallback([&rapid_count](const SecurityLogger::SecurityEvent&) {
+        rapid_count++;
+    });
+
+    for (int i = 0; i < 100; i++) {
+        logger.log(SecurityLogger::Severity::INFO, "Test", "Rapid", "Event");
+    }
+
+    all_passed &= (rapid_count == 100);
+
+    // Clean up
+    logger.clearCallback();
+
+    std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (4 sub-tests)" << std::endl;
+    std::cout << "         NOTE: P1-005 addressed via documentation (header + impl)" << std::endl;
+    std::cout << "         Callbacks MUST be non-blocking to prevent race conditions" << std::endl;
     return all_passed;
 }

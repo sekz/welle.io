@@ -113,6 +113,17 @@ public:
     /**
      * @brief Set event callback for external monitoring
      * @param callback Callback function
+     * 
+     * @warning P1-005: The callback is invoked while holding an internal mutex lock.
+     *          Callbacks MUST:
+     *          - Execute quickly (< 1ms recommended)
+     *          - NOT block or wait on I/O
+     *          - NOT call back into SecurityLogger (causes deadlock)
+     *          - NOT acquire locks that could cause deadlock
+     *          - Be thread-safe if accessing shared state
+     *          
+     *          Blocking callbacks will prevent other threads from logging events.
+     *          Use std::async or a queue if you need to perform slow operations.
      */
     void setCallback(EventCallback callback);
 

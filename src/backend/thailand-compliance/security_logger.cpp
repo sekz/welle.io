@@ -3,6 +3,47 @@
  *    welle.io Thailand DAB+ Security Logger Implementation
  *
  *    Thread-safe security event logging for DAB+ receiver
+ *    
+ *    P1-005 FIX: Callback Usage Guidelines
+ *    ======================================
+ *    Callbacks are invoked while holding a mutex. To prevent race conditions:
+ *    
+ *    CORRECT USAGE (non-blocking callback):
+ *    ```cpp
+ *    std::queue<SecurityEvent> event_queue;
+ *    std::mutex queue_mutex;
+ *    
+ *    SecurityLogger::getInstance().setCallback([](const SecurityEvent& event) {
+ *        // Quick operation: just queue the event
+ *        std::lock_guard<std::mutex> lock(queue_mutex);
+ *        event_queue.push(event);
+ *    });
+ *    
+ *    // Process events in separate thread
+ *    std::thread processor([&]() {
+ *        while (running) {
+ *            SecurityEvent event;
+ *            {
+ *                std::lock_guard<std::mutex> lock(queue_mutex);
+ *                if (!event_queue.empty()) {
+ *                    event = event_queue.front();
+ *                    event_queue.pop();
+ *                }
+ *            }
+ *            // Now do slow operations (I/O, network, etc.)
+ *            sendToMonitoringServer(event);
+ *        }
+ *    });
+ *    ```
+ *    
+ *    INCORRECT USAGE (blocking callback - causes race condition):
+ *    ```cpp
+ *    SecurityLogger::getInstance().setCallback([](const SecurityEvent& event) {
+ *        // BAD: This blocks all other threads trying to log!
+ *        httpPost("http://server/log", event);  // Network I/O
+ *        writeToDatabase(event);                 // Disk I/O
+ *    });
+ *    ```
  */
 
 #include "security_logger.h"
