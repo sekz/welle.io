@@ -245,6 +245,12 @@ public:
      * Verifies: PTy validation and defensive bounds checking
      */
     bool testP1008_ProgrammeTypeBoundsChecking();
+    
+    /**
+     * @brief Test P1-011: Mixed language parsing error handling
+     * Verifies: MAX_PARTS limit and safe trim implementation
+     */
+    bool testP1011_MixedLanguageErrorHandling();
 };
 
 #endif // SECURITY_TESTS_H

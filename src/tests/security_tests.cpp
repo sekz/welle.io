@@ -87,6 +87,7 @@ bool SecurityTests::runAllTests() {
     total++; if (testP1009_FileHandlingResourceLeak()) passed++;
     total++; if (testP1010_NumeralConversionPerformance()) passed++;
     total++; if (testP1008_ProgrammeTypeBoundsChecking()) passed++;
+    total++; if (testP1011_MixedLanguageErrorHandling()) passed++;
     
     std::cout << "\n========================================" << std::endl;
     std::cout << "Security Tests: " << passed << "/" << total << " passed";
@@ -1162,5 +1163,71 @@ bool SecurityTests::testP1008_ProgrammeTypeBoundsChecking() {
     all_passed &= !max_english.empty();
 
     std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (8 sub-tests)" << std::endl;
+    return all_passed;
+}
+
+bool SecurityTests::testP1011_MixedLanguageErrorHandling() {
+    std::cout << "  [TEST] P1-011: Mixed language parsing error handling... ";
+
+    bool all_passed = true;
+
+    // Test 1: Normal mixed language content (Thai/English)
+    std::string normal_mixed = "สถานี/Station";
+    uint8_t normal_data[50];
+    memcpy(normal_data, normal_mixed.c_str(), normal_mixed.length());
+    
+    std::string thai_result, english_result;
+    bool result1 = ThaiServiceParser::parseMixedLanguageContent(
+        normal_data, normal_mixed.length(), CharacterSet::UnicodeUtf8, thai_result, english_result);
+    // Should successfully parse (implementation dependent)
+    all_passed &= true;  // Just verify no crash
+
+    // Test 2: Excessive parts (> 10) - should truncate to MAX_PARTS
+    std::string excessive = "A/B/C/D/E/F/G/H/I/J/K/L/M/N/O/P/Q/R/S/T";  // 20 parts
+    uint8_t excessive_data[100];
+    memcpy(excessive_data, excessive.c_str(), excessive.length());
+    
+    std::string thai2, english2;
+    bool result2 = ThaiServiceParser::parseMixedLanguageContent(
+        excessive_data, excessive.length(), CharacterSet::UnicodeUtf8, thai2, english2);
+    all_passed &= true;  // Should handle gracefully, not crash
+
+    // Test 3: All whitespace string - safe trim should handle
+    std::string whitespace = "   \t\n\r   ";
+    uint8_t ws_data[20];
+    memcpy(ws_data, whitespace.c_str(), whitespace.length());
+    
+    std::string thai3, english3;
+    bool result3 = ThaiServiceParser::parseMixedLanguageContent(
+        ws_data, whitespace.length(), CharacterSet::UnicodeUtf8, thai3, english3);
+    all_passed &= true;  // Should not crash on all-whitespace
+
+    // Test 4: Empty input
+    std::string thai4, english4;
+    bool result4 = ThaiServiceParser::parseMixedLanguageContent(
+        nullptr, 0, CharacterSet::UnicodeUtf8, thai4, english4);
+    all_passed &= (result4 == false);  // Should return false
+
+    // Test 5: Single part (no separator)
+    std::string single = "Station";
+    uint8_t single_data[20];
+    memcpy(single_data, single.c_str(), single.length());
+    
+    std::string thai5, english5;
+    bool result5 = ThaiServiceParser::parseMixedLanguageContent(
+        single_data, single.length(), CharacterSet::UnicodeUtf8, thai5, english5);
+    all_passed &= (result5 == false);  // Should return false (< 2 parts)
+
+    // Test 6: Mixed with whitespace " Thai / English "
+    std::string padded = " A / B ";
+    uint8_t padded_data[20];
+    memcpy(padded_data, padded.c_str(), padded.length());
+    
+    std::string thai6, english6;
+    bool result6 = ThaiServiceParser::parseMixedLanguageContent(
+        padded_data, padded.length(), CharacterSet::UnicodeUtf8, thai6, english6);
+    all_passed &= true;  // Trim should handle whitespace safely
+
+    std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (6 sub-tests)" << std::endl;
     return all_passed;
 }

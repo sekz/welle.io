@@ -382,6 +382,9 @@ std::string ThaiServiceParser::extractThaiText(const uint8_t* label_data, size_t
 
 bool ThaiServiceParser::parseMixedLanguageContent(const uint8_t* data, size_t length, CharacterSet charset,
                                                 std::string& thai_text, std::string& english_text) {
+    // P1-011 Fix: Add bounds checking and safe string operations
+    const size_t MAX_PARTS = 10;  // Reasonable limit for mixed language segments
+    
     if (!data || length == 0) {
         return false;
     }
@@ -394,19 +397,19 @@ bool ThaiServiceParser::parseMixedLanguageContent(const uint8_t* data, size_t le
     std::stringstream ss(full_text);
     std::string part;
     
-    // Split on common separators
-    while (std::getline(ss, part, '/')) {
+    // Split on common separators with MAX_PARTS limit
+    while (std::getline(ss, part, '/') && parts.size() < MAX_PARTS) {
         if (!part.empty()) {
             parts.push_back(part);
         }
     }
     
     if (parts.size() < 2) {
-        // Try other separators
+        // Try other separators with MAX_PARTS limit
         parts.clear();
         ss.clear();
         ss.str(full_text);
-        while (std::getline(ss, part, '|')) {
+        while (std::getline(ss, part, '|') && parts.size() < MAX_PARTS) {
             if (!part.empty()) {
                 parts.push_back(part);
             }
@@ -417,9 +420,23 @@ bool ThaiServiceParser::parseMixedLanguageContent(const uint8_t* data, size_t le
         // Classify parts as Thai or English
         for (const auto& p : parts) {
             std::string trimmed = p;
-            // Simple trim
-            trimmed.erase(0, trimmed.find_first_not_of(" \t\n\r"));
-            trimmed.erase(trimmed.find_last_not_of(" \t\n\r") + 1);
+            
+            // P1-011 Fix: Safe trim implementation with npos check
+            size_t start = trimmed.find_first_not_of(" \t\n\r");
+            if (start == std::string::npos) {
+                trimmed = "";  // All whitespace
+            } else {
+                size_t end = trimmed.find_last_not_of(" \t\n\r");
+                if (end != std::string::npos && end >= start) {
+                    trimmed = trimmed.substr(start, end - start + 1);
+                } else {
+                    trimmed = "";  // Safety fallback
+                }
+            }
+            
+            if (trimmed.empty()) {
+                continue;  // Skip empty parts
+            }
             
             if (containsThaiCharacters(trimmed)) {
                 if (thai_text.empty()) {
