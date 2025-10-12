@@ -233,6 +233,12 @@ public:
      * Verifies: Proper error checking and cleanup in file operations
      */
     bool testP1009_FileHandlingResourceLeak();
+    
+    /**
+     * @brief Test P1-010: Performance optimization in numeral conversion
+     * Verifies: Single-pass O(n) algorithm works correctly
+     */
+    bool testP1010_NumeralConversionPerformance();
 };
 
 #endif // SECURITY_TESTS_H

@@ -431,13 +431,17 @@ std::string ThaiTextConverter::truncateThaiText(const std::string& thai_text,
 }
 
 std::string ThaiTextConverter::convertArabicNumeralsToThai(const std::string& text) {
-    std::string result = text;
+    // P1-010 Fix: Rewrite to single-pass O(n) instead of O(n²)
+    std::string result;
+    result.reserve(text.length() * 3);  // Thai numerals are 3 bytes each in UTF-8
     
-    for (const auto& mapping : ARABIC_TO_THAI_NUMERALS) {
-        size_t pos = 0;
-        while ((pos = result.find(mapping.first, pos)) != std::string::npos) {
-            result.replace(pos, 1, mapping.second);
-            pos += mapping.second.length();
+    for (char c : text) {
+        // Check if character is Arabic numeral (0-9)
+        auto it = ARABIC_TO_THAI_NUMERALS.find(c);
+        if (it != ARABIC_TO_THAI_NUMERALS.end()) {
+            result += it->second;  // Append Thai numeral
+        } else {
+            result += c;  // Append original character
         }
     }
     

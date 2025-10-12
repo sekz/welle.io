@@ -85,6 +85,7 @@ bool SecurityTests::runAllTests() {
     total++; if (testP1007_TIS620IntegerOverflow()) passed++;
     total++; if (testP1005_CallbackDocumentation()) passed++;
     total++; if (testP1009_FileHandlingResourceLeak()) passed++;
+    total++; if (testP1010_NumeralConversionPerformance()) passed++;
     
     std::cout << "\n========================================" << std::endl;
     std::cout << "Security Tests: " << passed << "/" << total << " passed";
@@ -1055,5 +1056,59 @@ bool SecurityTests::testP1009_FileHandlingResourceLeak() {
     std::remove(test_file.c_str());
 
     std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (8 sub-tests)" << std::endl;
+    return all_passed;
+}
+
+bool SecurityTests::testP1010_NumeralConversionPerformance() {
+    std::cout << "  [TEST] P1-010: Numeral conversion performance optimization... ";
+
+    bool all_passed = true;
+
+    // Test 1: Basic conversion (single digit)
+    std::string test1 = "0";
+    std::string result1 = ThaiTextConverter::convertArabicNumeralsToThai(test1);
+    all_passed &= !result1.empty();  // Should produce Thai numeral
+
+    // Test 2: Multiple digits
+    std::string test2 = "0123456789";
+    std::string result2 = ThaiTextConverter::convertArabicNumeralsToThai(test2);
+    all_passed &= (result2.length() > test2.length());  // Thai numerals are multi-byte
+
+    // Test 3: Mixed text and numbers
+    std::string test3 = "Station 12B frequency 225.648 MHz";
+    std::string result3 = ThaiTextConverter::convertArabicNumeralsToThai(test3);
+    all_passed &= !result3.empty();
+    all_passed &= (result3.find("Station") != std::string::npos);  // Non-numeric text preserved
+
+    // Test 4: No numbers (should return unchanged text)
+    std::string test4 = "Hello World";
+    std::string result4 = ThaiTextConverter::convertArabicNumeralsToThai(test4);
+    all_passed &= (result4 == test4);  // Should be identical
+
+    // Test 5: Large input (performance test - should complete quickly)
+    std::string test5;
+    for (int i = 0; i < 10000; i++) {
+        test5 += "0123456789 ";
+    }
+    auto start = std::chrono::high_resolution_clock::now();
+    std::string result5 = ThaiTextConverter::convertArabicNumeralsToThai(test5);
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    
+    // Should complete in under 100ms (was O(n²), now O(n))
+    all_passed &= (duration.count() < 100);
+    all_passed &= !result5.empty();
+
+    // Test 6: Empty string
+    std::string test6 = "";
+    std::string result6 = ThaiTextConverter::convertArabicNumeralsToThai(test6);
+    all_passed &= result6.empty();
+
+    // Test 7: Consecutive numbers
+    std::string test7 = "111222333";
+    std::string result7 = ThaiTextConverter::convertArabicNumeralsToThai(test7);
+    all_passed &= !result7.empty();
+
+    std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (7 sub-tests)" << std::endl;
     return all_passed;
 }
