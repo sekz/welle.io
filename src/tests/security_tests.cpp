@@ -81,6 +81,7 @@ bool SecurityTests::runAllTests() {
     // Wave 5: P1 Issue Fixes Tests
     std::cout << "\n--- Wave 5: P1 Issue Fixes ---" << std::endl;
     total++; if (testP1002_UTF8Validation()) passed++;
+    total++; if (testP1003_IntegerOverflowPrevention()) passed++;
     
     std::cout << "\n========================================" << std::endl;
     std::cout << "Security Tests: " << passed << "/" << total << " passed";
@@ -795,5 +796,97 @@ bool SecurityTests::testP1002_UTF8Validation() {
     all_passed &= (result11 == 0x41);
 
     std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (11 sub-tests)" << std::endl;
+    return all_passed;
+}
+
+bool SecurityTests::testP1003_IntegerOverflowPrevention() {
+    std::cout << "  [TEST] P1-003: Integer overflow prevention in UTF-8 parsing... ";
+
+    bool all_passed = true;
+
+    // Test 1: convertUTF8ToTIS620 with invalid UTF-8 sequence
+    // This should not crash or cause integer overflow
+    std::string invalid_utf8_1;
+    invalid_utf8_1 += static_cast<char>(0xFF);  // Invalid UTF-8 first byte
+    invalid_utf8_1 += static_cast<char>(0xFE);
+    auto result1 = ThaiTextConverter::convertUTF8ToTIS620(invalid_utf8_1);
+    all_passed &= true;  // Should not crash
+
+    // Test 2: analyzeThaiText with invalid UTF-8 (CORRECTED function name)
+    std::string invalid_utf8_2;
+    invalid_utf8_2 += static_cast<char>(0xF8);  // Invalid - would return seq_length > 4
+    invalid_utf8_2 += "test";
+    auto metrics = ThaiTextConverter::analyzeThaiText(invalid_utf8_2);  // CORRECTED
+    all_passed &= true;  // Should not crash
+
+    // Test 3: containsThaiCharacters with invalid UTF-8
+    std::string invalid_utf8_3;
+    invalid_utf8_3 += static_cast<char>(0xFC);  // Invalid UTF-8
+    bool contains = ThaiTextConverter::containsThaiCharacters(invalid_utf8_3);
+    all_passed &= (contains == false);  // Should return false, not crash
+
+    // Test 4: truncateThaiText with invalid UTF-8 (NEW TEST - missed function)
+    std::string invalid_utf8_4;
+    invalid_utf8_4 += "Hello";
+    invalid_utf8_4 += static_cast<char>(0xFF);  // Invalid byte
+    invalid_utf8_4 += "World";
+    auto result4 = ThaiTextConverter::truncateThaiText(invalid_utf8_4, 10, false);
+    all_passed &= true;  // Should not crash
+
+    // Test 5: Valid Thai text should still work correctly
+    std::string valid_thai;
+    valid_thai += static_cast<char>(0xE0);
+    valid_thai += static_cast<char>(0xB8);
+    valid_thai += static_cast<char>(0x97);  // Thai ท
+    bool contains_thai = ThaiTextConverter::containsThaiCharacters(valid_thai);
+    all_passed &= (contains_thai == true);
+
+    // Test 6: Mixed valid and invalid UTF-8
+    std::string mixed;
+    mixed += "Hello";
+    mixed += static_cast<char>(0xFF);  // Invalid
+    mixed += static_cast<char>(0xE0);
+    mixed += static_cast<char>(0xB8);
+    mixed += static_cast<char>(0x97);  // Thai ท
+    mixed += static_cast<char>(0xFE);  // Invalid
+    mixed += "World";
+    auto result6 = ThaiTextConverter::convertUTF8ToTIS620(mixed);
+    all_passed &= true;  // Should handle gracefully
+
+    // Test 7: Edge case - seq_length boundary values
+    std::string boundary;
+    boundary += static_cast<char>(0x00);  // seq_length = 1
+    boundary += static_cast<char>(0x7F);  // seq_length = 1
+    boundary += static_cast<char>(0xC0);  // seq_length = 2
+    boundary += static_cast<char>(0x80);  // continuation byte
+    auto result7 = ThaiTextConverter::convertUTF8ToTIS620(boundary);
+    all_passed &= true;  // Should not crash
+
+    // Test 8: Verify metrics still work with valid Thai text
+    std::string valid_metrics_test;
+    valid_metrics_test += static_cast<char>(0xE0);
+    valid_metrics_test += static_cast<char>(0xB8);
+    valid_metrics_test += static_cast<char>(0xAA);  // Thai ส
+    valid_metrics_test += static_cast<char>(0xE0);
+    valid_metrics_test += static_cast<char>(0xB8);
+    valid_metrics_test += static_cast<char>(0xA7);  // Thai ว
+    auto metrics2 = ThaiTextConverter::analyzeThaiText(valid_metrics_test);
+    all_passed &= (metrics2.thai_character_count > 0);  // Should detect Thai characters
+
+    // Test 9: truncateThaiText with valid Thai and proper truncation
+    std::string long_thai;
+    long_thai += static_cast<char>(0xE0);
+    long_thai += static_cast<char>(0xB8);
+    long_thai += static_cast<char>(0xAA);  // Thai ส
+    long_thai += static_cast<char>(0xE0);
+    long_thai += static_cast<char>(0xB8);
+    long_thai += static_cast<char>(0xA7);  // Thai ว
+    long_thai += static_cast<char>(0xE0);
+    long_thai += static_cast<char>(0xB8);
+    long_thai += static_cast<char>(0xB1);  // Thai ั
+    auto truncated = ThaiTextConverter::truncateThaiText(long_thai, 3, true);
+    all_passed &= !truncated.empty();  // Should produce non-empty result
+
+    std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (9 sub-tests)" << std::endl;
     return all_passed;
 }

@@ -92,6 +92,12 @@ std::vector<uint8_t> ThaiTextConverter::convertUTF8ToTIS620(const std::string& u
         uint8_t first_byte = static_cast<uint8_t>(utf8_text[i]);
         int seq_length = getUTF8SequenceLength(first_byte);
         
+        // P1-003 Fix: Validate seq_length before arithmetic to prevent integer overflow
+        if (seq_length < 1 || seq_length > 4) {
+            i++; // Skip invalid byte
+            continue;
+        }
+        
         if (i + seq_length > utf8_text.length()) {
             break; // Invalid sequence
         }
@@ -229,6 +235,12 @@ ThaiTextConverter::ThaiTextMetrics ThaiTextConverter::analyzeThaiText(const std:
     while (i < text.length()) {
         uint8_t first_byte = static_cast<uint8_t>(text[i]);
         int seq_length = getUTF8SequenceLength(first_byte);
+        
+        // P1-003 Fix: Validate seq_length before arithmetic to prevent integer overflow
+        if (seq_length < 1 || seq_length > 4) {
+            i++; // Skip invalid byte
+            continue;
+        }
         
         if (i + seq_length > text.length()) {
             break;
@@ -381,6 +393,12 @@ std::string ThaiTextConverter::truncateThaiText(const std::string& thai_text,
         uint8_t first_byte = static_cast<uint8_t>(thai_text[i]);
         int seq_length = getUTF8SequenceLength(first_byte);
         
+        // P1-003 Fix: Validate seq_length before arithmetic to prevent integer overflow
+        if (seq_length < 1 || seq_length > 4) {
+            i++; // Skip invalid byte
+            continue;
+        }
+        
         if (i + seq_length > thai_text.length()) {
             break;
         }
@@ -451,6 +469,12 @@ bool ThaiTextConverter::containsThaiCharacters(const std::string& text) {
     for (size_t i = 0; i < text.length(); ) {
         uint8_t first_byte = static_cast<uint8_t>(text[i]);
         int seq_length = getUTF8SequenceLength(first_byte);
+        
+        // P1-003 Fix: Validate seq_length before arithmetic to prevent integer overflow
+        if (seq_length < 1 || seq_length > 4) {
+            i++; // Skip invalid byte
+            continue;
+        }
         
         if (i + seq_length > text.length()) {
             break;

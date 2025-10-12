@@ -209,6 +209,12 @@ public:
      * Verifies: Null pointer check, continuation byte validation, bounds checking
      */
     bool testP1002_UTF8Validation();
+    
+    /**
+     * @brief Test P1-003: Integer overflow prevention in UTF-8 parsing
+     * Verifies: seq_length validation before arithmetic operations
+     */
+    bool testP1003_IntegerOverflowPrevention();
 };
 
 #endif // SECURITY_TESTS_H
