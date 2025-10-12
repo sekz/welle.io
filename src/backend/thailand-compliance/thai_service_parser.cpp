@@ -11,6 +11,7 @@
  */
 
 #include "thai_service_parser.h"
+#include "security_logger.h"
 #include "charsets.h"
 #include <sstream>
 #include <algorithm>
@@ -25,33 +26,68 @@ static const size_t MOT_MIN_HEADER_SIZE = 8;
 
 // Validate MOT extension header before parsing
 static bool validateMOTHeader(const uint8_t* data, size_t length, size_t pos, uint8_t header_length) {
+    SecurityLogger::SecurityEvent event;
+    event.data_length = length;
+    event.position = pos;
+    event.header_value = header_length;
+    
     // Null pointer check
     if (!data) {
+        event.severity = SecurityLogger::Severity::CRITICAL;
+        event.component = "MOTParser";
+        event.event_type = "NullPointer";
+        event.description = "MOT data pointer is null";
+        SecurityLogger::getInstance().log(event);
         return false;
     }
     
     // Position within bounds
     if (pos >= length) {
+        event.severity = SecurityLogger::Severity::WARNING;
+        event.component = "MOTParser";
+        event.event_type = "OutOfBounds";
+        event.description = "Position exceeds buffer length";
+        SecurityLogger::getInstance().log(event);
         return false;
     }
     
     // Minimum header size (type + length bytes)
     if (pos + 2 > length) {
+        event.severity = SecurityLogger::Severity::WARNING;
+        event.component = "MOTParser";
+        event.event_type = "InsufficientData";
+        event.description = "Cannot read header type and length";
+        SecurityLogger::getInstance().log(event);
         return false;
     }
     
     // Integer overflow prevention - check if addition would overflow
     if (header_length > length - pos - 2) {
+        event.severity = SecurityLogger::Severity::CRITICAL;
+        event.component = "MOTParser";
+        event.event_type = "IntegerOverflow";
+        event.description = "Header length would cause integer overflow";
+        SecurityLogger::getInstance().log(event);
         return false;
     }
     
     // Maximum size enforcement
     if (header_length > MAX_MOT_HEADER_SIZE) {
+        event.severity = SecurityLogger::Severity::WARNING;
+        event.component = "MOTParser";
+        event.event_type = "ExcessiveSize";
+        event.description = "Header length exceeds maximum allowed (255 bytes)";
+        SecurityLogger::getInstance().log(event);
         return false;
     }
     
     // Full header accessibility
     if (pos + 2 + header_length > length) {
+        event.severity = SecurityLogger::Severity::WARNING;
+        event.component = "MOTParser";
+        event.event_type = "BufferOverrun";
+        event.description = "Header extends beyond buffer end";
+        SecurityLogger::getInstance().log(event);
         return false;
     }
     

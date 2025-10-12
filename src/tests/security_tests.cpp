@@ -12,9 +12,11 @@
 
 #include "security_tests.h"
 #include "../backend/thailand-compliance/thai_service_parser.h"
+#include "../backend/thailand-compliance/security_logger.h"
 #include <iostream>
 #include <cassert>
 #include <cstring>
+#include <fstream>
 #include <thread>
 #include <vector>
 #include <atomic>
@@ -60,6 +62,14 @@ bool SecurityTests::runAllTests() {
     total++; if (testNullPointerHandling()) passed++;
     total++; if (testEmptyBufferHandling()) passed++;
     total++; if (testLargeInputHandling()) passed++;
+    
+    // SecurityLogger Tests (Wave 2)
+    std::cout << "\n--- Wave 2: SecurityLogger ---" << std::endl;
+    total++; if (testSecurityLoggerBasic()) passed++;
+    total++; if (testSecurityLoggerFileLogging()) passed++;
+    total++; if (testSecurityLoggerThreadSafety()) passed++;
+    total++; if (testSecurityLoggerSeverityFilter()) passed++;
+    total++; if (testSecurityLoggerValidationIntegration()) passed++;
     
     std::cout << "\n========================================" << std::endl;
     std::cout << "Security Tests: " << passed << "/" << total << " passed";
@@ -464,5 +474,151 @@ bool SecurityTests::testLargeInputHandling() {
     bool passed = true;  // Pass if no crash or hang
     
     std::cout << (passed ? "PASS ✓" : "FAIL ✗") << std::endl;
+    return passed;
+}
+
+// ============================================================================
+// SecurityLogger Tests (Wave 2)
+// ============================================================================
+
+bool SecurityTests::testSecurityLoggerBasic() {
+    std::cout << "  [TEST] SecurityLogger basic functionality... ";
+    
+    auto& logger = SecurityLogger::getInstance();
+    logger.resetCounters();
+    
+    // Log events of different severities
+    logger.log(SecurityLogger::Severity::INFO, "TestComponent", "TestEvent", "Info message");
+    logger.log(SecurityLogger::Severity::WARNING, "TestComponent", "TestEvent", "Warning message");
+    logger.log(SecurityLogger::Severity::CRITICAL, "TestComponent", "TestEvent", "Critical message");
+    
+    // Check counters
+    auto counts = logger.getEventCounts();
+    bool passed = (counts.info == 1 && counts.warning == 1 && counts.critical == 1);
+    
+    std::cout << (passed ? "PASS ✓" : "FAIL ✗") << " (" << counts.total() << " events)" << std::endl;
+    return passed;
+}
+
+bool SecurityTests::testSecurityLoggerFileLogging() {
+    std::cout << "  [TEST] SecurityLogger file logging... ";
+    
+    auto& logger = SecurityLogger::getInstance();
+    std::string test_log = "/tmp/welle_security_test.log";
+    
+    // Enable file logging
+    if (!logger.enableFileLogging(test_log)) {
+        std::cout << "FAIL ✗ (cannot open log file)" << std::endl;
+        return false;
+    }
+    
+    // Log some events
+    logger.log(SecurityLogger::Severity::WARNING, "TestComponent", "FileTest", "Test event");
+    
+    // Disable logging
+    logger.disableFileLogging();
+    
+    // Check file exists and has content
+    std::ifstream log_file(test_log);
+    bool file_exists = log_file.good();
+    std::string line;
+    int line_count = 0;
+    while (std::getline(log_file, line)) {
+        line_count++;
+    }
+    log_file.close();
+    
+    // Clean up
+    std::remove(test_log.c_str());
+    
+    bool passed = file_exists && line_count > 0;
+    std::cout << (passed ? "PASS ✓" : "FAIL ✗") << " (" << line_count << " lines)" << std::endl;
+    return passed;
+}
+
+bool SecurityTests::testSecurityLoggerThreadSafety() {
+    std::cout << "  [TEST] SecurityLogger thread safety... ";
+    
+    auto& logger = SecurityLogger::getInstance();
+    logger.resetCounters();
+    
+    std::vector<std::thread> threads;
+    std::atomic<int> events_logged{0};
+    
+    // Launch 50 threads, each logging 20 events
+    for (int i = 0; i < 50; i++) {
+        threads.emplace_back([&]() {
+            for (int j = 0; j < 20; j++) {
+                logger.log(SecurityLogger::Severity::INFO, "ThreadTest", "Concurrent", "Test");
+                events_logged++;
+            }
+        });
+    }
+    
+    // Wait for all threads
+    for (auto& t : threads) {
+        t.join();
+    }
+    
+    // Verify all events were logged
+    auto counts = logger.getEventCounts();
+    bool passed = (counts.info == 1000 && events_logged == 1000);
+    
+    std::cout << (passed ? "PASS ✓" : "FAIL ✗") << " (" << counts.info << "/1000 events)" << std::endl;
+    return passed;
+}
+
+bool SecurityTests::testSecurityLoggerSeverityFilter() {
+    std::cout << "  [TEST] SecurityLogger severity filtering... ";
+    
+    auto& logger = SecurityLogger::getInstance();
+    logger.resetCounters();
+    
+    // Set minimum severity to WARNING (should ignore INFO)
+    logger.setMinimumSeverity(SecurityLogger::Severity::WARNING);
+    
+    // Log events
+    logger.log(SecurityLogger::Severity::INFO, "FilterTest", "Info", "Should be ignored");
+    logger.log(SecurityLogger::Severity::WARNING, "FilterTest", "Warning", "Should be logged");
+    logger.log(SecurityLogger::Severity::CRITICAL, "FilterTest", "Critical", "Should be logged");
+    
+    auto counts = logger.getEventCounts();
+    
+    // Reset to INFO for other tests
+    logger.setMinimumSeverity(SecurityLogger::Severity::INFO);
+    
+    // Should have 0 INFO, 1 WARNING, 1 CRITICAL
+    bool passed = (counts.info == 0 && counts.warning == 1 && counts.critical == 1);
+    
+    std::cout << (passed ? "PASS ✓" : "FAIL ✗") << std::endl;
+    return passed;
+}
+
+bool SecurityTests::testSecurityLoggerValidationIntegration() {
+    std::cout << "  [TEST] SecurityLogger MOT validation integration... ";
+    
+    auto& logger = SecurityLogger::getInstance();
+    logger.resetCounters();
+    
+    // Create MOT data that will trigger validation failures
+    uint8_t invalid_mot[] = {
+        0x00, 0x01,             // Transport ID
+        0x00, 0x00, 0x01, 0x00, // Content size
+        0x00, 0x00,             // MOT header size
+        0x25,                   // Header type
+        0xFF,                   // Header length (255 - will exceed buffer)
+        0x0E                    // Charset (only 1 byte of data remaining)
+    };
+    
+    // This should trigger validation failure and log it
+    auto result = ThaiServiceParser::parseThaiMOTSlideShow(invalid_mot, sizeof(invalid_mot));
+    
+    // Check that warnings/critical events were logged
+    auto counts = logger.getEventCounts();
+    bool passed = (counts.warning > 0 || counts.critical > 0);
+    
+    std::cout << (passed ? "PASS ✓" : "FAIL ✗") 
+              << " (" << counts.warning << " warnings, " 
+              << counts.critical << " critical)" << std::endl;
     return passed;
 }

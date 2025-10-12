@@ -143,6 +143,40 @@ public:
      * Verifies: No excessive memory allocation or hangs
      */
     bool testLargeInputHandling();
+    
+    // ========================================================================
+    // SecurityLogger Tests (Wave 2)
+    // ========================================================================
+    
+    /**
+     * @brief Test SecurityLogger basic functionality
+     * Verifies: Logging works, counters increment
+     */
+    bool testSecurityLoggerBasic();
+    
+    /**
+     * @brief Test SecurityLogger file logging
+     * Verifies: Events written to file
+     */
+    bool testSecurityLoggerFileLogging();
+    
+    /**
+     * @brief Test SecurityLogger thread safety
+     * Verifies: Concurrent logging doesn't corrupt state
+     */
+    bool testSecurityLoggerThreadSafety();
+    
+    /**
+     * @brief Test SecurityLogger severity filtering
+     * Verifies: Minimum severity filter works
+     */
+    bool testSecurityLoggerSeverityFilter();
+    
+    /**
+     * @brief Test SecurityLogger validation logging
+     * Verifies: MOT validation failures are logged
+     */
+    bool testSecurityLoggerValidationIntegration();
 };
 
 #endif // SECURITY_TESTS_H

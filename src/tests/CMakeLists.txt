@@ -68,6 +68,7 @@ add_executable(test_security
     security_tests.h
     # Include source files directly for testing
     ${CMAKE_SOURCE_DIR}/src/backend/thailand-compliance/thai_service_parser.cpp
+    ${CMAKE_SOURCE_DIR}/src/backend/thailand-compliance/security_logger.cpp
     ${CMAKE_SOURCE_DIR}/src/backend/charsets.cpp
     ${CMAKE_SOURCE_DIR}/src/various/thai_text_converter.cpp
 )
