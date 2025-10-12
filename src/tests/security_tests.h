@@ -227,6 +227,12 @@ public:
      * Verifies: Callback works correctly and documentation exists
      */
     bool testP1005_CallbackDocumentation();
+    
+    /**
+     * @brief Test P1-009: File handling resource leak prevention
+     * Verifies: Proper error checking and cleanup in file operations
+     */
+    bool testP1009_FileHandlingResourceLeak();
 };
 
 #endif // SECURITY_TESTS_H

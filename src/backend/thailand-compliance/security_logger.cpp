@@ -49,6 +49,7 @@
 #include "security_logger.h"
 #include <sstream>
 #include <iomanip>
+#include <iostream>
 #include <ctime>
 
 SecurityLogger::SecurityLogger()
@@ -129,34 +130,63 @@ void SecurityLogger::log(Severity severity,
 bool SecurityLogger::enableFileLogging(const std::string& filepath) {
     std::lock_guard<std::mutex> lock(mutex_);
     
+    // P1-009 Fix: Proper error handling for file operations
+    
     // Close existing file if open
     if (log_file_.is_open()) {
         log_file_.close();
+        if (log_file_.fail()) {
+            // Log to stderr since file logging isn't available
+            std::cerr << "SecurityLogger: Failed to close previous log file" << std::endl;
+        }
+        log_file_.clear();  // Clear error flags
     }
     
     // Open new log file
     log_file_.open(filepath, std::ios::app);  // Append mode
-    file_logging_enabled_ = log_file_.is_open();
     
-    if (file_logging_enabled_) {
-        // Write header
-        log_file_ << "\n========================================\n";
-        log_file_ << "Security Log Started: " << generateTimestamp() << "\n";
-        log_file_ << "welle.io Thailand DAB+ Security Logger\n";
-        log_file_ << "========================================\n" << std::endl;
+    // Check if open succeeded
+    if (!log_file_.is_open() || log_file_.fail()) {
+        file_logging_enabled_ = false;
+        std::cerr << "SecurityLogger: Failed to open log file: " << filepath << std::endl;
+        return false;
     }
     
-    return file_logging_enabled_;
+    file_logging_enabled_ = true;
+    
+    // Write header with error checking
+    log_file_ << "\n========================================\n";
+    log_file_ << "Security Log Started: " << generateTimestamp() << "\n";
+    log_file_ << "welle.io Thailand DAB+ Security Logger\n";
+    log_file_ << "========================================\n" << std::endl;
+    
+    if (log_file_.fail()) {
+        std::cerr << "SecurityLogger: Failed to write header to log file" << std::endl;
+        file_logging_enabled_ = false;
+        log_file_.close();
+        log_file_.clear();
+        return false;
+    }
+    
+    return true;
 }
 
 void SecurityLogger::disableFileLogging() {
     std::lock_guard<std::mutex> lock(mutex_);
     
+    // P1-009 Fix: Proper error handling when closing file
     if (log_file_.is_open()) {
+        // Write footer (ignore errors since we're closing anyway)
         log_file_ << "\n========================================\n";
         log_file_ << "Security Log Stopped: " << generateTimestamp() << "\n";
         log_file_ << "========================================\n" << std::endl;
+        
+        // Close and clear state
         log_file_.close();
+        if (log_file_.fail()) {
+            std::cerr << "SecurityLogger: Error occurred while closing log file" << std::endl;
+        }
+        log_file_.clear();  // Clear error flags to allow reuse
     }
     
     file_logging_enabled_ = false;

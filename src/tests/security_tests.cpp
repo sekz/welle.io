@@ -84,6 +84,7 @@ bool SecurityTests::runAllTests() {
     total++; if (testP1003_IntegerOverflowPrevention()) passed++;
     total++; if (testP1007_TIS620IntegerOverflow()) passed++;
     total++; if (testP1005_CallbackDocumentation()) passed++;
+    total++; if (testP1009_FileHandlingResourceLeak()) passed++;
     
     std::cout << "\n========================================" << std::endl;
     std::cout << "Security Tests: " << passed << "/" << total << " passed";
@@ -1003,5 +1004,56 @@ bool SecurityTests::testP1005_CallbackDocumentation() {
     std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (4 sub-tests)" << std::endl;
     std::cout << "         NOTE: P1-005 addressed via documentation (header + impl)" << std::endl;
     std::cout << "         Callbacks MUST be non-blocking to prevent race conditions" << std::endl;
+    return all_passed;
+}
+
+bool SecurityTests::testP1009_FileHandlingResourceLeak() {
+    std::cout << "  [TEST] P1-009: File handling resource leak prevention... ";
+
+    bool all_passed = true;
+
+    auto& logger = SecurityLogger::getInstance();
+
+    // Test 1: Open valid file
+    std::string test_file = "/tmp/security_test_p1009.log";
+    bool result1 = logger.enableFileLogging(test_file);
+    all_passed &= result1;  // Should succeed
+
+    // Test 2: Write to file
+    logger.log(SecurityLogger::Severity::INFO, "Test", "FileTest", "Test log entry");
+    // No crash = pass
+
+    // Test 3: Close file properly
+    logger.disableFileLogging();
+    // No crash = pass
+
+    // Test 4: Reopen same file (tests clear() was called)
+    bool result4 = logger.enableFileLogging(test_file);
+    all_passed &= result4;  // Should succeed
+
+    // Test 5: Close and reopen again (tests multiple cycles)
+    logger.disableFileLogging();
+    bool result5 = logger.enableFileLogging(test_file);
+    all_passed &= result5;  // Should succeed
+
+    // Test 6: Try to open invalid path (should fail gracefully, not crash)
+    logger.disableFileLogging();
+    bool result6 = logger.enableFileLogging("/invalid/path/that/does/not/exist/test.log");
+    all_passed &= !result6;  // Should fail (return false)
+    // No crash = pass
+
+    // Test 7: Logging should still work after failed file open
+    logger.log(SecurityLogger::Severity::INFO, "Test", "AfterFail", "Should not crash");
+    // No crash = pass
+
+    // Test 8: Can successfully open file again after failure
+    bool result8 = logger.enableFileLogging(test_file);
+    all_passed &= result8;  // Should succeed
+
+    // Cleanup
+    logger.disableFileLogging();
+    std::remove(test_file.c_str());
+
+    std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (8 sub-tests)" << std::endl;
     return all_passed;
 }
