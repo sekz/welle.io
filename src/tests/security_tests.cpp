@@ -82,6 +82,7 @@ bool SecurityTests::runAllTests() {
     std::cout << "\n--- Wave 5: P1 Issue Fixes ---" << std::endl;
     total++; if (testP1002_UTF8Validation()) passed++;
     total++; if (testP1003_IntegerOverflowPrevention()) passed++;
+    total++; if (testP1007_TIS620IntegerOverflow()) passed++;
     
     std::cout << "\n========================================" << std::endl;
     std::cout << "Security Tests: " << passed << "/" << total << " passed";
@@ -888,5 +889,59 @@ bool SecurityTests::testP1003_IntegerOverflowPrevention() {
     all_passed &= !truncated.empty();  // Should produce non-empty result
 
     std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (9 sub-tests)" << std::endl;
+    return all_passed;
+}
+
+bool SecurityTests::testP1007_TIS620IntegerOverflow() {
+    std::cout << "  [TEST] P1-007: Integer overflow in TIS-620 conversion... ";
+
+    bool all_passed = true;
+
+    // Test 1: Normal TIS-620 data should work correctly
+    uint8_t normal_tis620[] = {0xA1, 0xA2, 0xA3, 0xA4};  // Thai characters
+    std::string result1 = ThaiTextConverter::convertTIS620ToUTF8(normal_tis620, sizeof(normal_tis620));
+    all_passed &= !result1.empty();  // Should produce output
+
+    // Test 2: Excessive length should be truncated (not crash)
+    // Create a large buffer (200KB - exceeds 100KB limit)
+    const size_t large_size = 200 * 1024;
+    std::vector<uint8_t> large_tis620(large_size, 0xA1);  // Fill with Thai character
+    std::string result2 = ThaiTextConverter::convertTIS620ToUTF8(large_tis620.data(), large_size);
+    // Should truncate to 100KB, so result should be <= 300KB (100KB * 3 bytes per char)
+    all_passed &= (result2.size() <= 300 * 1024);
+    all_passed &= !result2.empty();  // Should still produce something
+
+    // Test 3: Maximum safe length (100KB exactly) should work
+    const size_t max_safe = 100 * 1024;
+    std::vector<uint8_t> max_tis620(max_safe, 0xA1);
+    std::string result3 = ThaiTextConverter::convertTIS620ToUTF8(max_tis620.data(), max_safe);
+    all_passed &= !result3.empty();  // Should work fine
+
+    // Test 4: Mixed ASCII and Thai at large size
+    std::vector<uint8_t> mixed_large(50 * 1024);
+    for (size_t i = 0; i < mixed_large.size(); i++) {
+        mixed_large[i] = (i % 2 == 0) ? 0x41 : 0xA1;  // Alternate 'A' and Thai
+    }
+    std::string result4 = ThaiTextConverter::convertTIS620ToUTF8(mixed_large.data(), mixed_large.size());
+    all_passed &= !result4.empty();
+
+    // Test 5: Empty input should return empty string
+    std::string result5 = ThaiTextConverter::convertTIS620ToUTF8(nullptr, 100);
+    all_passed &= result5.empty();
+
+    // Test 6: Zero length should return empty string
+    uint8_t dummy[] = {0xA1};
+    std::string result6 = ThaiTextConverter::convertTIS620ToUTF8(dummy, 0);
+    all_passed &= result6.empty();
+
+    // Test 7: Verify no integer overflow in reservation
+    // If length * 3 overflowed, reserve() might throw or behave badly
+    // This test just ensures we don't crash with large (but not excessive) input
+    const size_t near_limit = 99 * 1024;
+    std::vector<uint8_t> near_limit_data(near_limit, 0xA1);
+    std::string result7 = ThaiTextConverter::convertTIS620ToUTF8(near_limit_data.data(), near_limit);
+    all_passed &= !result7.empty();
+
+    std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (7 sub-tests)" << std::endl;
     return all_passed;
 }

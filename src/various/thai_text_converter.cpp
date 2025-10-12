@@ -56,12 +56,22 @@ const std::vector<std::string> ThaiTextConverter::THAI_COMMON_WORDS = {
 };
 
 std::string ThaiTextConverter::convertTIS620ToUTF8(const uint8_t* tis620_data, size_t length) {
+    // P1-007 Fix: Prevent integer overflow in reservation calculation
+    const size_t MAX_TIS620_INPUT = 100 * 1024;  // 100KB reasonable limit
+    
     if (!tis620_data || length == 0) {
         return "";
     }
     
+    // Validate input length to prevent excessive memory allocation
+    if (length > MAX_TIS620_INPUT) {
+        length = MAX_TIS620_INPUT;  // Truncate to safe limit
+    }
+    
     std::string result;
-    result.reserve(length * 2); // Reserve space for potential UTF-8 expansion
+    // Reserve space for UTF-8 expansion (Thai chars = 3 bytes, ASCII = 1 byte)
+    // Use length * 3 instead of length * 2 to be safe for all-Thai input
+    result.reserve(length * 3);
     
     for (size_t i = 0; i < length; i++) {
         uint8_t byte = tis620_data[i];

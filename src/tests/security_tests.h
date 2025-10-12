@@ -215,6 +215,12 @@ public:
      * Verifies: seq_length validation before arithmetic operations
      */
     bool testP1003_IntegerOverflowPrevention();
+    
+    /**
+     * @brief Test P1-007: Integer overflow prevention in TIS-620 conversion
+     * Verifies: Input length validation and safe reservation calculation
+     */
+    bool testP1007_TIS620IntegerOverflow();
 };
 
 #endif // SECURITY_TESTS_H
