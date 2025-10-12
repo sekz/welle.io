@@ -17,8 +17,50 @@
 #include <iomanip>
 #include <ctime>
 
+// MOT Security Limits
+static const size_t MAX_MOT_HEADER_SIZE = 255;
+static const size_t MAX_MOT_CAPTION_LENGTH = 256;
+static const size_t MAX_LABEL_LENGTH = 256;
+static const size_t MOT_MIN_HEADER_SIZE = 8;
+
 // Programme type descriptions in Thai (ETSI EN 300 401 Table 9)
 const std::vector<std::string> ThaiServiceParser::PROGRAMME_TYPES_THAI = {
+
+// Validate MOT extension header before parsing
+static bool validateMOTHeader(const uint8_t* data, size_t length, size_t pos, uint8_t header_length) {
+    // Null pointer check
+    if (!data) {
+        return false;
+    }
+    
+    // Position within bounds
+    if (pos >= length) {
+        return false;
+    }
+    
+    // Minimum header size (type + length bytes)
+    if (pos + 2 > length) {
+        return false;
+    }
+    
+    // Integer overflow prevention - check if addition would overflow
+    if (header_length > length - pos - 2) {
+        return false;
+    }
+    
+    // Maximum size enforcement
+    if (header_length > MAX_MOT_HEADER_SIZE) {
+        return false;
+    }
+    
+    // Full header accessibility
+    if (pos + 2 + header_length > length) {
+        return false;
+    }
+    
+    return true;
+}
+
     "ไม่ระบุ",              // 0 - No programme type
     "ข่าว",                // 1 - News
     "ข้อมูลทั่วไป",          // 2 - Current Affairs
@@ -170,11 +212,26 @@ ThaiServiceParser::ThaiDLSInfo ThaiServiceParser::parseThaiDLS(const uint8_t* dl
         }
     }
     
-    // Generate timestamp
-    std::time_t now = std::time(0);
-    std::tm* local_time = std::localtime(&now);
+    // Generate timestamp (thread-safe)
+    std::time_t now = std::time(nullptr);
+    std::tm local_time_buf{};
+    
+#ifdef _WIN32
+    // Windows: localtime_s(dest, src)
+    if (localtime_s(&local_time_buf, &now) != 0) {
+        dls_info.timestamp = "1970-01-01 00:00:00";  // Epoch fallback
+        return dls_info;
+    }
+#else
+    // POSIX (Linux/macOS/Android): localtime_r(src, dest)
+    if (localtime_r(&now, &local_time_buf) == nullptr) {
+        dls_info.timestamp = "1970-01-01 00:00:00";  // Epoch fallback
+        return dls_info;
+    }
+#endif
+    
     std::stringstream ss;
-    ss << std::put_time(local_time, "%Y-%m-%d %H:%M:%S");
+    ss << std::put_time(&local_time_buf, "%Y-%m-%d %H:%M:%S");
     dls_info.timestamp = ss.str();
     
     return dls_info;
@@ -192,38 +249,50 @@ ThaiServiceParser::MOTSlideShowInfo ThaiServiceParser::parseThaiMOTSlideShow(con
     slide_info.content_size = (mot_data[2] << 24) | (mot_data[3] << 16) | (mot_data[4] << 8) | mot_data[5];
     
     // Look for MOT extension headers with Thai captions
-    size_t pos = 8;
-    while (pos < length - 4) {
+    size_t pos = MOT_MIN_HEADER_SIZE;
+    while (pos + 2 <= length) {  // Ensure we can safely read header type and length
         uint8_t header_type = mot_data[pos];
         uint8_t header_length = mot_data[pos + 1];
-        
+
+        // Validate header before processing
+        if (!validateMOTHeader(mot_data, length, pos, header_length)) {
+            break;  // Stop parsing on invalid header
+        }
+
         if (header_type == 0x25 && header_length > 2) { // Content Description
             uint8_t charset_flag = mot_data[pos + 2];
             slide_info.caption_charset = getCharacterSetFromFlag(charset_flag);
-            
+
+            // Triple-checked bounds (validated by validateMOTHeader)
             if (pos + 3 + header_length <= length) {
                 const uint8_t* caption_data = &mot_data[pos + 3];
+
+                // Prevent underflow: ensure header_length >= 1
+                if (header_length < 1) break;
                 size_t caption_length = header_length - 1;
-                
-                std::string full_caption = extractThaiText(caption_data, caption_length, slide_info.caption_charset);
-                
-                // Parse mixed language captions
-                if (parseMixedLanguageContent(caption_data, caption_length, slide_info.caption_charset,
-                                            slide_info.caption_thai, slide_info.caption_english)) {
-                    // Mixed content successfully parsed
-                } else {
-                    if (containsThaiCharacters(full_caption)) {
-                        slide_info.caption_thai = full_caption;
+
+                // Caption length enforcement
+                if (caption_length > 0 && caption_length <= MAX_MOT_CAPTION_LENGTH) {
+                    std::string full_caption = extractThaiText(caption_data, caption_length, slide_info.caption_charset);
+
+                    // Parse mixed language captions
+                    if (parseMixedLanguageContent(caption_data, caption_length, slide_info.caption_charset,
+                                                slide_info.caption_thai, slide_info.caption_english)) {
+                        // Mixed content successfully parsed
                     } else {
-                        slide_info.caption_english = full_caption;
+                        if (containsThaiCharacters(full_caption)) {
+                            slide_info.caption_thai = full_caption;
+                        } else {
+                            slide_info.caption_english = full_caption;
+                        }
                     }
                 }
             }
         }
-        
+
+        // Safe position advancement (validated by validateMOTHeader)
         pos += 2 + header_length;
     }
-    
     return slide_info;
 }
 

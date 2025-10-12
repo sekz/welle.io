@@ -53,7 +53,7 @@ public:
 
     struct FIG1_Data {
         uint16_t service_id;
-        uint8_t* label_data;
+        const uint8_t* label_data;
         uint8_t label_length;
         uint8_t charset_flag;
         uint16_t character_flag_field;
