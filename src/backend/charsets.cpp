@@ -145,7 +145,11 @@ std::string toUtf8StringUsingCharset(const void* buffer,
                 const uint8_t* buf = reinterpret_cast<const uint8_t*>(buffer);
                 
                 if (num_bytes == 0) {
-                    while (*buf) {
+                    // Add maximum iteration limit for null-terminated strings
+                    const size_t MAX_LABEL_LENGTH = 256;  // DAB label maximum per ETSI EN 300 401
+                    size_t count = 0;
+                    
+                    while (*buf && count < MAX_LABEL_LENGTH) {
                         if (*buf >= 0x20 && *buf <= 0x7F) {
                             // ASCII range - direct mapping
                             result += static_cast<char>(*buf);
@@ -169,6 +173,7 @@ std::string toUtf8StringUsingCharset(const void* buffer,
                             result += '?';
                         }
                         buf++;
+                        count++;
                     }
                 } else {
                     for (size_t i = 0; i < num_bytes; i++) {

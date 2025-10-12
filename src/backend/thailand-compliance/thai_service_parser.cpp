@@ -214,7 +214,10 @@ ThaiServiceParser::ThaiServiceInfo ThaiServiceParser::parseThaiService(const FIG
 ThaiServiceParser::ThaiDLSInfo ThaiServiceParser::parseThaiDLS(const uint8_t* dls_data, size_t length) {
     ThaiDLSInfo dls_info;
     
-    if (!dls_data || length < 4) {
+    const size_t DLS_MIN_HEADER_SIZE = 4;
+    const size_t MAX_DLS_TEXT_LENGTH = 128;  // Per ETSI EN 300 401
+    
+    if (!dls_data || length < DLS_MIN_HEADER_SIZE) {
         return dls_info;
     }
     
@@ -228,9 +231,24 @@ ThaiServiceParser::ThaiDLSInfo ThaiServiceParser::parseThaiDLS(const uint8_t* dl
     dls_info.charset = getCharacterSetFromFlag(charset_flag);
     
     // Parse DLS text content
-    if (length > 4) {
-        const uint8_t* text_data = &dls_data[4];
-        size_t text_length = length - 4;
+    if (length > DLS_MIN_HEADER_SIZE) {
+        const uint8_t* text_data = &dls_data[DLS_MIN_HEADER_SIZE];
+        size_t text_length = length - DLS_MIN_HEADER_SIZE;
+        
+        // Validate and enforce maximum DLS text length
+        if (text_length > MAX_DLS_TEXT_LENGTH) {
+            SecurityLogger::SecurityEvent event;
+            event.severity = SecurityLogger::Severity::WARNING;
+            event.component = "DLSParser";
+            event.event_type = "ExcessiveDLSLength";
+            event.description = "DLS text exceeds maximum segment length (128 bytes)";
+            event.data_length = text_length;
+            event.position = DLS_MIN_HEADER_SIZE;
+            SecurityLogger::getInstance().log(event);
+            
+            // Truncate to maximum allowed length
+            text_length = MAX_DLS_TEXT_LENGTH;
+        }
         
         std::string full_text = extractThaiText(text_data, text_length, dls_info.charset);
         
@@ -521,11 +539,15 @@ std::string ThaiServiceParser::decodeTIS620ToUTF8(const uint8_t* tis620_data, si
 }
 
 bool ThaiServiceParser::containsThaiCharacters(const std::string& text) {
-    // Simple check for Thai UTF-8 sequences (0xE0 0xB8-0xBB)
-    for (size_t i = 0; i < text.length(); i++) {
-        if (static_cast<unsigned char>(text[i]) == 0xE0 && i + 2 < text.length()) {
+    // Check for Thai UTF-8 sequences (0xE0 0xB8-0xBB 0x80-0xBF)
+    // Thai characters are 3-byte UTF-8: E0 B8-BB 80-BF
+    for (size_t i = 0; i + 2 < text.length(); i++) {  // Ensure we can safely read 3 bytes
+        if (static_cast<unsigned char>(text[i]) == 0xE0) {
             unsigned char b2 = static_cast<unsigned char>(text[i + 1]);
-            if (b2 >= 0xB8 && b2 <= 0xBB) {
+            unsigned char b3 = static_cast<unsigned char>(text[i + 2]);
+            
+            // Validate Thai range (U+0E00-U+0E7F) and proper UTF-8 continuation byte
+            if (b2 >= 0xB8 && b2 <= 0xBB && (b3 & 0x80) == 0x80) {
                 return true;
             }
         }
