@@ -177,6 +177,28 @@ public:
      * Verifies: MOT validation failures are logged
      */
     bool testSecurityLoggerValidationIntegration();
+    
+    // ========================================================================
+    // Wave 3: MOT Content Size Validation Tests
+    // ========================================================================
+    
+    /**
+     * @brief Test MOT content_size validation
+     * Verifies: Excessive content_size is rejected
+     */
+    bool testMOTContentSizeValidation();
+    
+    /**
+     * @brief Test MOT content_size boundary conditions
+     * Verifies: Boundary values handled correctly
+     */
+    bool testMOTContentSizeBoundaries();
+    
+    /**
+     * @brief Test MOT content_size security logging
+     * Verifies: Excessive size triggers security log
+     */
+    bool testMOTContentSizeLogging();
 };
 
 #endif // SECURITY_TESTS_H

@@ -23,6 +23,7 @@ static const size_t MAX_MOT_HEADER_SIZE = 255;
 static const size_t MAX_MOT_CAPTION_LENGTH = 256;
 static const size_t MAX_LABEL_LENGTH = 256;
 static const size_t MOT_MIN_HEADER_SIZE = 8;
+static const uint32_t MAX_MOT_CONTENT_SIZE = 16 * 1024 * 1024;  // 16MB reasonable limit for slideshow images
 
 // Validate MOT extension header before parsing
 static bool validateMOTHeader(const uint8_t* data, size_t length, size_t pos, uint8_t header_length) {
@@ -282,6 +283,21 @@ ThaiServiceParser::MOTSlideShowInfo ThaiServiceParser::parseThaiMOTSlideShow(con
     // Parse MOT header
     slide_info.transport_id = (mot_data[0] << 8) | mot_data[1];
     slide_info.content_size = (mot_data[2] << 24) | (mot_data[3] << 16) | (mot_data[4] << 8) | mot_data[5];
+    
+    // Validate content size to prevent excessive memory allocation
+    if (slide_info.content_size > MAX_MOT_CONTENT_SIZE) {
+        SecurityLogger::SecurityEvent event;
+        event.severity = SecurityLogger::Severity::WARNING;
+        event.component = "MOTParser";
+        event.event_type = "ExcessiveContentSize";
+        event.description = "MOT content_size exceeds maximum allowed (16MB)";
+        event.data_length = length;
+        event.position = 2;  // content_size field position
+        SecurityLogger::getInstance().log(event);
+        
+        // Mark as invalid by setting to 0
+        slide_info.content_size = 0;
+    }
     
     // Look for MOT extension headers with Thai captions
     size_t pos = MOT_MIN_HEADER_SIZE;

@@ -71,6 +71,12 @@ bool SecurityTests::runAllTests() {
     total++; if (testSecurityLoggerSeverityFilter()) passed++;
     total++; if (testSecurityLoggerValidationIntegration()) passed++;
     
+    // Wave 3: MOT Content Size Validation Tests
+    std::cout << "\n--- Wave 3: MOT Content Size Validation ---" << std::endl;
+    total++; if (testMOTContentSizeValidation()) passed++;
+    total++; if (testMOTContentSizeBoundaries()) passed++;
+    total++; if (testMOTContentSizeLogging()) passed++;
+    
     std::cout << "\n========================================" << std::endl;
     std::cout << "Security Tests: " << passed << "/" << total << " passed";
     if (passed == total) {
@@ -620,5 +626,103 @@ bool SecurityTests::testSecurityLoggerValidationIntegration() {
     std::cout << (passed ? "PASS ✓" : "FAIL ✗") 
               << " (" << counts.warning << " warnings, " 
               << counts.critical << " critical)" << std::endl;
+    return passed;
+}
+
+// ============================================================================
+// Wave 3: MOT Content Size Validation Tests
+// ============================================================================
+
+bool SecurityTests::testMOTContentSizeValidation() {
+    std::cout << "  [TEST] MOT content_size validation... ";
+    
+    // Create MOT data with excessive content_size (100MB)
+    uint8_t mot_data[20];
+    memset(mot_data, 0, sizeof(mot_data));
+    
+    mot_data[0] = 0x00; mot_data[1] = 0x01;  // Transport ID
+    // content_size = 100MB (0x06400000)
+    mot_data[2] = 0x06; mot_data[3] = 0x40; 
+    mot_data[4] = 0x00; mot_data[5] = 0x00;
+    mot_data[6] = 0x00; mot_data[7] = 0x00;  // MOT header size
+    
+    auto result = ThaiServiceParser::parseThaiMOTSlideShow(mot_data, sizeof(mot_data));
+    
+    // content_size should be set to 0 (rejected)
+    bool passed = (result.content_size == 0);
+    
+    std::cout << (passed ? "PASS ✓" : "FAIL ✗") << std::endl;
+    return passed;
+}
+
+bool SecurityTests::testMOTContentSizeBoundaries() {
+    std::cout << "  [TEST] MOT content_size boundaries... ";
+    
+    bool all_passed = true;
+    
+    // Test 1: Maximum allowed size (16MB exactly)
+    uint8_t valid_mot[20];
+    memset(valid_mot, 0, sizeof(valid_mot));
+    valid_mot[0] = 0x00; valid_mot[1] = 0x01;
+    // 16MB = 0x01000000
+    valid_mot[2] = 0x01; valid_mot[3] = 0x00;
+    valid_mot[4] = 0x00; valid_mot[5] = 0x00;
+    valid_mot[6] = 0x00; valid_mot[7] = 0x00;
+    
+    auto result1 = ThaiServiceParser::parseThaiMOTSlideShow(valid_mot, sizeof(valid_mot));
+    all_passed &= (result1.content_size == 16 * 1024 * 1024);  // Should accept
+    
+    // Test 2: One byte over limit (16MB + 1)
+    uint8_t invalid_mot[20];
+    memset(invalid_mot, 0, sizeof(invalid_mot));
+    invalid_mot[0] = 0x00; invalid_mot[1] = 0x01;
+    // 16MB + 1 = 0x01000001
+    invalid_mot[2] = 0x01; invalid_mot[3] = 0x00;
+    invalid_mot[4] = 0x00; invalid_mot[5] = 0x01;
+    invalid_mot[6] = 0x00; invalid_mot[7] = 0x00;
+    
+    auto result2 = ThaiServiceParser::parseThaiMOTSlideShow(invalid_mot, sizeof(invalid_mot));
+    all_passed &= (result2.content_size == 0);  // Should reject
+    
+    // Test 3: Reasonable size (1MB)
+    uint8_t reasonable_mot[20];
+    memset(reasonable_mot, 0, sizeof(reasonable_mot));
+    reasonable_mot[0] = 0x00; reasonable_mot[1] = 0x01;
+    // 1MB = 0x00100000
+    reasonable_mot[2] = 0x00; reasonable_mot[3] = 0x10;
+    reasonable_mot[4] = 0x00; reasonable_mot[5] = 0x00;
+    reasonable_mot[6] = 0x00; reasonable_mot[7] = 0x00;
+    
+    auto result3 = ThaiServiceParser::parseThaiMOTSlideShow(reasonable_mot, sizeof(reasonable_mot));
+    all_passed &= (result3.content_size == 1 * 1024 * 1024);  // Should accept
+    
+    std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << std::endl;
+    return all_passed;
+}
+
+bool SecurityTests::testMOTContentSizeLogging() {
+    std::cout << "  [TEST] MOT content_size logging... ";
+    
+    auto& logger = SecurityLogger::getInstance();
+    logger.resetCounters();
+    
+    // Create MOT with excessive content_size
+    uint8_t mot_data[20];
+    memset(mot_data, 0, sizeof(mot_data));
+    mot_data[0] = 0x00; mot_data[1] = 0x01;
+    // 1GB (way over limit)
+    mot_data[2] = 0x40; mot_data[3] = 0x00;
+    mot_data[4] = 0x00; mot_data[5] = 0x00;
+    mot_data[6] = 0x00; mot_data[7] = 0x00;
+    
+    // This should trigger security log
+    auto result = ThaiServiceParser::parseThaiMOTSlideShow(mot_data, sizeof(mot_data));
+    
+    // Check that a warning was logged
+    auto counts = logger.getEventCounts();
+    bool passed = (counts.warning > 0);
+    
+    std::cout << (passed ? "PASS ✓" : "FAIL ✗") 
+              << " (" << counts.warning << " warnings)" << std::endl;
     return passed;
 }
