@@ -86,6 +86,7 @@ bool SecurityTests::runAllTests() {
     total++; if (testP1005_CallbackDocumentation()) passed++;
     total++; if (testP1009_FileHandlingResourceLeak()) passed++;
     total++; if (testP1010_NumeralConversionPerformance()) passed++;
+    total++; if (testP1008_ProgrammeTypeBoundsChecking()) passed++;
     
     std::cout << "\n========================================" << std::endl;
     std::cout << "Security Tests: " << passed << "/" << total << " passed";
@@ -1110,5 +1111,56 @@ bool SecurityTests::testP1010_NumeralConversionPerformance() {
     all_passed &= !result7.empty();
 
     std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (7 sub-tests)" << std::endl;
+    return all_passed;
+}
+
+bool SecurityTests::testP1008_ProgrammeTypeBoundsChecking() {
+    std::cout << "  [TEST] P1-008: Programme type bounds checking... ";
+
+    bool all_passed = true;
+
+    // Test 1: Verify constants are correct
+    all_passed &= (ThaiServiceParser::MAX_PROGRAMME_TYPE == 31);
+    all_passed &= (ThaiServiceParser::DEFAULT_PROGRAMME_TYPE == 0);
+
+    // Test 2: Test getProgrammeTypeThai with valid range (0-31)
+    for (uint8_t i = 0; i <= 31; i++) {
+        std::string thai = ThaiServiceParser::getProgrammeTypeThai(i);
+        all_passed &= !thai.empty();
+    }
+
+    // Test 3: Test getProgrammeTypeEnglish with valid range (0-31)
+    for (uint8_t i = 0; i <= 31; i++) {
+        std::string english = ThaiServiceParser::getProgrammeTypeEnglish(i);
+        all_passed &= !english.empty();
+    }
+
+    // Test 4: Test out-of-bounds values return fallback
+    std::string fallback_thai = ThaiServiceParser::getProgrammeTypeThai(32);
+    all_passed &= (fallback_thai == "ไม่ระบุ");
+    
+    std::string fallback_english = ThaiServiceParser::getProgrammeTypeEnglish(32);
+    all_passed &= (fallback_english == "None");
+
+    // Test 5: Test extreme out-of-bounds values
+    std::string extreme_thai = ThaiServiceParser::getProgrammeTypeThai(255);
+    all_passed &= (extreme_thai == "ไม่ระบุ");
+    
+    std::string extreme_english = ThaiServiceParser::getProgrammeTypeEnglish(255);
+    all_passed &= (extreme_english == "None");
+
+    // Test 6: Verify default programme type (0) returns valid strings
+    std::string default_thai = ThaiServiceParser::getProgrammeTypeThai(ThaiServiceParser::DEFAULT_PROGRAMME_TYPE);
+    std::string default_english = ThaiServiceParser::getProgrammeTypeEnglish(ThaiServiceParser::DEFAULT_PROGRAMME_TYPE);
+    all_passed &= !default_thai.empty();
+    all_passed &= !default_english.empty();
+
+    // Test 7: Verify boundary value (31 - max valid)
+    std::string max_thai = ThaiServiceParser::getProgrammeTypeThai(ThaiServiceParser::MAX_PROGRAMME_TYPE);
+    std::string max_english = ThaiServiceParser::getProgrammeTypeEnglish(ThaiServiceParser::MAX_PROGRAMME_TYPE);
+    all_passed &= !max_thai.empty();
+    all_passed &= !max_english.empty();
+
+    std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (8 sub-tests)" << std::endl;
     return all_passed;
 }

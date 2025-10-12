@@ -202,10 +202,17 @@ ThaiServiceParser::ThaiServiceInfo ThaiServiceParser::parseThaiService(const FIG
         }
     }
     
-    // Set programme type descriptions
-    if (service.programme_type_code < PROGRAMME_TYPES_THAI.size()) {
+    // P1-008 Fix: Defensive bounds checking for programme type vectors
+    // Validate programme_type_code against both vectors and MAX_PROGRAMME_TYPE
+    if (service.programme_type_code <= MAX_PROGRAMME_TYPE &&
+        service.programme_type_code < PROGRAMME_TYPES_THAI.size() &&
+        service.programme_type_code < PROGRAMME_TYPES_ENGLISH.size()) {
         service.programme_type_thai = PROGRAMME_TYPES_THAI[service.programme_type_code];
         service.programme_type_english = PROGRAMME_TYPES_ENGLISH[service.programme_type_code];
+    } else {
+        // Out of bounds - use default (should never happen with current code)
+        service.programme_type_thai = PROGRAMME_TYPES_THAI[DEFAULT_PROGRAMME_TYPE];
+        service.programme_type_english = PROGRAMME_TYPES_ENGLISH[DEFAULT_PROGRAMME_TYPE];
     }
     
     return service;

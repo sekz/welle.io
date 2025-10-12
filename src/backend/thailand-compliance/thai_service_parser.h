@@ -25,6 +25,12 @@
  */
 class ThaiServiceParser {
 public:
+    // P1-008 Fix: Programme Type (PTy) validation constants
+    // Per ETSI EN 300 401 Section 8.1.5 (FIG 0/17) - PTy is 5-bit field (0-31)
+    static constexpr uint8_t MAX_PROGRAMME_TYPE = 31;
+    static constexpr uint8_t DEFAULT_PROGRAMME_TYPE = 0;  // "None" / "ไม่ระบุ"
+    
+public:
     struct ThaiServiceInfo {
         uint32_t service_id;
         std::string thai_label;

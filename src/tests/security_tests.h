@@ -239,6 +239,12 @@ public:
      * Verifies: Single-pass O(n) algorithm works correctly
      */
     bool testP1010_NumeralConversionPerformance();
+    
+    /**
+     * @brief Test P1-008: Programme type bounds checking
+     * Verifies: PTy validation and defensive bounds checking
+     */
+    bool testP1008_ProgrammeTypeBoundsChecking();
 };
 
 #endif // SECURITY_TESTS_H
