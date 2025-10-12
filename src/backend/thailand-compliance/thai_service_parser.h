@@ -57,12 +57,13 @@ public:
         std::string timestamp;
     };
 
+    // P1-012 Fix: Add const-correctness to prevent accidental modification
     struct FIG1_Data {
-        uint16_t service_id;
-        const uint8_t* label_data;
-        uint8_t label_length;
-        uint8_t charset_flag;
-        uint16_t character_flag_field;
+        const uint16_t service_id;
+        const uint8_t* label_data;  // Already const pointer
+        const uint8_t label_length;
+        const uint8_t charset_flag;
+        const uint16_t character_flag_field;
     };
 
     struct MOTSlideShowInfo {

@@ -169,13 +169,16 @@ bool ThailandComplianceTests::testThaiServiceParsing() {
     std::cout << "Testing Thai Service Parsing..." << std::endl;
     
     // Create mock FIG1 data
-    ThaiServiceParser::FIG1_Data fig1_data;
-    fig1_data.service_id = 0x4001;
-    
     std::string test_label = "วิทยุกระจายเสียงแห่งประเทศไทย";
-    fig1_data.label_data = (uint8_t*)test_label.c_str();
-    fig1_data.label_length = test_label.length();
-    fig1_data.charset_flag = 0x0E; // Thai Profile
+    
+    // P1-012: Use aggregate initialization for const fields
+    ThaiServiceParser::FIG1_Data fig1_data{
+        0x4001,                             // service_id
+        (uint8_t*)test_label.c_str(),       // label_data
+        (uint8_t)test_label.length(),       // label_length
+        0x0E,                               // charset_flag (Thai Profile)
+        0x0000                              // character_flag_field
+    };
     
     auto service_info = ThaiServiceParser::parseThaiService(fig1_data);
     

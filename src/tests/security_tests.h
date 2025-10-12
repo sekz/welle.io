@@ -251,6 +251,12 @@ public:
      * Verifies: MAX_PARTS limit and safe trim implementation
      */
     bool testP1011_MixedLanguageErrorHandling();
+    
+    /**
+     * @brief Test P1-012: FIG1_Data const-correctness
+     * Verifies: Compile-time immutability and aggregate initialization
+     */
+    bool testP1012_FIG1DataConstCorrectness();
 };
 
 #endif // SECURITY_TESTS_H

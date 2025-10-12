@@ -88,6 +88,7 @@ bool SecurityTests::runAllTests() {
     total++; if (testP1010_NumeralConversionPerformance()) passed++;
     total++; if (testP1008_ProgrammeTypeBoundsChecking()) passed++;
     total++; if (testP1011_MixedLanguageErrorHandling()) passed++;
+    total++; if (testP1012_FIG1DataConstCorrectness()) passed++;
     
     std::cout << "\n========================================" << std::endl;
     std::cout << "Security Tests: " << passed << "/" << total << " passed";
@@ -377,12 +378,14 @@ bool SecurityTests::testConstPointerCorrectness() {
         0x73, 0x6F, 0x62                      // "sob" in ASCII
     };
     
-    ThaiServiceParser::FIG1_Data fig1_data;
-    fig1_data.service_id = 0x4001;
-    fig1_data.label_data = label_data;  // Should compile (const pointer accepted)
-    fig1_data.label_length = sizeof(label_data);
-    fig1_data.charset_flag = 0x0E;  // Thai Profile
-    fig1_data.character_flag_field = 0x0000;
+    // P1-012: Use aggregate initialization for const fields
+    ThaiServiceParser::FIG1_Data fig1_data{
+        0x4001,              // service_id
+        label_data,          // label_data
+        sizeof(label_data),  // label_length
+        0x0E,                // charset_flag (Thai Profile)
+        0x0000               // character_flag_field
+    };
     
     auto result = ThaiServiceParser::parseThaiService(fig1_data);
     
@@ -400,12 +403,14 @@ bool SecurityTests::testFIG1DataNonOwnership() {
     uint8_t* temp_buffer = new uint8_t[16];
     memcpy(temp_buffer, "Test Station", 13);
     
-    ThaiServiceParser::FIG1_Data fig1_data;
-    fig1_data.service_id = 0x4001;
-    fig1_data.label_data = temp_buffer;
-    fig1_data.label_length = 13;
-    fig1_data.charset_flag = 0x00;  // EBU Latin
-    fig1_data.character_flag_field = 0x0000;
+    // P1-012: Use aggregate initialization for const fields
+    ThaiServiceParser::FIG1_Data fig1_data{
+        0x4001,        // service_id
+        temp_buffer,   // label_data
+        13,            // label_length
+        0x00,          // charset_flag (EBU Latin)
+        0x0000         // character_flag_field
+    };
     
     // Parse service (copies data to std::string)
     auto result = ThaiServiceParser::parseThaiService(fig1_data);
@@ -438,12 +443,14 @@ bool SecurityTests::testNullPointerHandling() {
     all_passed &= mot_result.caption_thai.empty();
     
     // Test 3: FIG1_Data with null pointer
-    ThaiServiceParser::FIG1_Data fig1_data;
-    fig1_data.service_id = 0x4001;
-    fig1_data.label_data = nullptr;
-    fig1_data.label_length = 10;
-    fig1_data.charset_flag = 0x00;
-    fig1_data.character_flag_field = 0x0000;
+    // P1-012: Use aggregate initialization for const fields
+    ThaiServiceParser::FIG1_Data fig1_data{
+        0x4001,   // service_id
+        nullptr,  // label_data
+        10,       // label_length
+        0x00,     // charset_flag
+        0x0000    // character_flag_field
+    };
     
     auto service_result = ThaiServiceParser::parseThaiService(fig1_data);
     all_passed &= service_result.english_label.empty();
@@ -1229,5 +1236,70 @@ bool SecurityTests::testP1011_MixedLanguageErrorHandling() {
     all_passed &= true;  // Trim should handle whitespace safely
 
     std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (6 sub-tests)" << std::endl;
+    return all_passed;
+}
+
+/**
+ * @brief Test P1-012: FIG1_Data const-correctness
+ * 
+ * This test verifies that FIG1_Data fields are immutable at compile-time:
+ * 1. Aggregate initialization compiles successfully
+ * 2. FIG1_Data can be used with parseThaiService()
+ * 3. All fields maintain their values
+ * 
+ * Note: The const-correctness is enforced at compile-time. If fields were
+ * mutable, code attempting to modify them would compile. With const fields,
+ * such code would fail to compile, preventing accidental modification.
+ * 
+ * Related fix: P1-012 in thai_service_parser.h (FIG1_Data struct)
+ */
+bool SecurityTests::testP1012_FIG1DataConstCorrectness() {
+    std::cout << "Test P1-012: FIG1_Data const-correctness... ";
+    bool all_passed = true;
+    
+    // Test 1: Aggregate initialization with const fields
+    std::string test_label = "Test Service";
+    ThaiServiceParser::FIG1_Data fig1_data{
+        0x1234,                             // service_id
+        (uint8_t*)test_label.c_str(),       // label_data
+        (uint8_t)test_label.length(),       // label_length
+        0x00,                               // charset_flag
+        0x0000                              // character_flag_field
+    };
+    all_passed &= (fig1_data.service_id == 0x1234);
+    all_passed &= (fig1_data.label_length == test_label.length());
+    all_passed &= (fig1_data.charset_flag == 0x00);
+    all_passed &= (fig1_data.character_flag_field == 0x0000);
+    
+    // Test 2: Use with parseThaiService()
+    auto service = ThaiServiceParser::parseThaiService(fig1_data);
+    all_passed &= (service.service_id == 0x1234);
+    
+    // Test 3: Thai character set with const fields
+    std::string thai_label = "วิทยุไทย";
+    ThaiServiceParser::FIG1_Data thai_data{
+        0x4001,                             // service_id
+        (uint8_t*)thai_label.c_str(),       // label_data
+        (uint8_t)thai_label.length(),       // label_length
+        0x0E,                               // charset_flag (Thai Profile)
+        0x0000                              // character_flag_field
+    };
+    auto thai_service = ThaiServiceParser::parseThaiService(thai_data);
+    all_passed &= (thai_service.service_id == 0x4001);
+    all_passed &= !thai_service.thai_label.empty();
+    
+    // Test 4: Zero values are valid
+    uint8_t empty_label[] = "";
+    ThaiServiceParser::FIG1_Data zero_data{
+        0x0000,                             // service_id
+        empty_label,                        // label_data
+        0,                                  // label_length
+        0x00,                               // charset_flag
+        0x0000                              // character_flag_field
+    };
+    all_passed &= (zero_data.service_id == 0x0000);
+    all_passed &= (zero_data.label_length == 0);
+    
+    std::cout << (all_passed ? "PASS ✓" : "FAIL ✗") << " (4 sub-tests)" << std::endl;
     return all_passed;
 }
