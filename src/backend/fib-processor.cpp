@@ -759,12 +759,13 @@ void FIBProcessor::FIG0Extension19(uint8_t *d)
     std::vector<ActiveAnnouncement> announcements;
 
     while (offset / 8 < Length - 1) {
-        // Parse FIG 0/19 fields (ETSI EN 300 401 Section 8.1.6.2)
-        uint8_t clusterId   = getBits_8 (d, offset);
-        uint16_t aswFlags   = getBits (d, offset + 8, 16);
-        bool    new_flag    = getBits_1(d, offset + 24);
-        bool    region_flag = getBits_1 (d, offset + 25);
-        uint8_t subChId     = getBits_6 (d, offset + 26);
+        // Parse FIG 0/19 fields (ETSI EN 300 401 Section 8.1.6.2 Table 16)
+        // Cluster Id: 6 bits (not 8!)
+        uint8_t clusterId   = getBits_6 (d, offset);
+        uint16_t aswFlags   = getBits (d, offset + 6, 16);
+        bool    new_flag    = getBits_1(d, offset + 22);
+        bool    region_flag = getBits_1 (d, offset + 23);
+        uint8_t subChId     = getBits_6 (d, offset + 24);
 
         // Create ActiveAnnouncement structure
         ActiveAnnouncement announcement;
@@ -777,12 +778,12 @@ void FIBProcessor::FIG0Extension19(uint8_t *d)
 
         // Handle regional information
         if (region_flag) {
-            region_Id_Lower = getBits_6 (d, offset + 34);
-            offset += 40;
+            region_Id_Lower = getBits_6 (d, offset + 30);  // Adjusted: was 34, now 30 (-4 bits)
+            offset += 36;  // Adjusted: was 40, now 36 (-4 bits)
             (void)region_Id_Lower;  // Store if needed for regional filtering
         }
         else {
-            offset += 32;
+            offset += 30;  // Adjusted: was 32, now 30 (-2 bits for ClusterId fix)
         }
 
         // State transition detection
