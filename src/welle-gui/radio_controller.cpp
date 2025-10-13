@@ -99,7 +99,7 @@ CRadioController::CRadioController(QVariantMap& commandLineOptions, QObject *par
     qRegisterMetaType<DabLabel>("DabLabel&");
     connect(this, &CRadioController::ensembleLabelUpdated,
             this, &CRadioController::ensembleLabel);
-        
+
     connect(this, &CRadioController::serviceDetected,
             this, &CRadioController::serviceId);
 
@@ -1005,7 +1005,7 @@ void CRadioController::onMessage(message_level_t level, const std::string& text,
       fullText = tr(text.c_str());
     else
       fullText = tr(text.c_str()) + QString::fromStdString(text2);
-    
+
     switch (level) {
         case message_level_t::Information:
             emit showInfoMessage(fullText);
@@ -1139,4 +1139,161 @@ void CRadioController::onRestartService()
 void CRadioController::restartService(void)
 {
     setService(currentService, true);
+}
+
+// P0-2 FIX: Add thread safety to announcement history methods
+QVariantList CRadioController::announcementHistory()
+{
+    std::lock_guard<std::mutex> lock(m_announcementHistoryMutex);
+    QVariantList result;
+    for (const auto& entry : m_announcementHistory) {
+        result.append(entry.toVariantMap());
+    }
+    return result;
+}
+
+void CRadioController::addAnnouncementToHistory(const AnnouncementHistoryEntry& entry)
+{
+    std::lock_guard<std::mutex> lock(m_announcementHistoryMutex);
+    m_announcementHistory.push_back(entry);
+
+    // Enforce max size (FIFO - remove oldest entries)
+    while (m_announcementHistory.size() > MAX_HISTORY_SIZE) {
+        m_announcementHistory.pop_front();
+    }
+
+    emit announcementHistoryChanged();
+}
+
+// Announcement settings methods
+void CRadioController::setAnnouncementEnabled(bool enabled)
+{
+    if (m_announcementEnabled != enabled) {
+        m_announcementEnabled = enabled;
+        emit announcementEnabledChanged(enabled);
+    }
+}
+
+// P0-3 FIX: Add input validation for setMinAnnouncementPriority
+void CRadioController::setMinAnnouncementPriority(int priority)
+{
+    // Validate range: 0-11 (ETSI EN 300 401 announcement types 0-10, plus type 11)
+    if (priority < 0 || priority > 11) {
+        qDebug() << "RadioController: Invalid announcement priority" << priority
+                 << "- must be in range 0-11 (ETSI EN 300 401). Ignoring.";
+        return;
+    }
+
+    if (m_minAnnouncementPriority != priority) {
+        m_minAnnouncementPriority = priority;
+        emit minAnnouncementPriorityChanged(priority);
+    }
+}
+
+// P0-3 FIX: Add input validation for setMaxAnnouncementDuration
+void CRadioController::setMaxAnnouncementDuration(int duration)
+{
+    // Validate range: 30-600 seconds (30s to 10 minutes)
+    if (duration < 30 || duration > 600) {
+        qDebug() << "RadioController: Invalid announcement duration" << duration
+                 << "seconds - must be in range 30-600 seconds. Ignoring.";
+        return;
+    }
+
+    if (m_maxAnnouncementDuration != duration) {
+        m_maxAnnouncementDuration = duration;
+        emit maxAnnouncementDurationChanged(duration);
+    }
+}
+
+void CRadioController::setAllowManualAnnouncementReturn(bool allow)
+{
+    if (m_allowManualReturn != allow) {
+        m_allowManualReturn = allow;
+        emit allowManualAnnouncementReturnChanged(allow);
+    }
+}
+
+void CRadioController::returnFromAnnouncement()
+{
+    if (m_isInAnnouncement) {
+        m_isInAnnouncement = false;
+        m_activeAnnouncementType = -1;
+        m_announcementDuration = 0;
+        m_announcementServiceName.clear();
+
+        emit isInAnnouncementChanged(false);
+        emit activeAnnouncementTypeChanged(-1);
+        emit announcementDurationChanged(0);
+        emit announcementServiceNameChanged("");
+
+        // TODO: Actually switch back to original service when backend is connected
+        qDebug() << "RadioController: Returning from announcement (not yet connected to backend)";
+    }
+}
+
+bool CRadioController::isAnnouncementTypeEnabled(int type)
+{
+    // If no types explicitly set, all are enabled by default
+    if (m_enabledAnnouncementTypes.empty()) {
+        return true;
+    }
+    return m_enabledAnnouncementTypes.find(type) != m_enabledAnnouncementTypes.end();
+}
+
+void CRadioController::setAnnouncementTypeEnabled(int type, bool enabled)
+{
+    bool wasEnabled = isAnnouncementTypeEnabled(type);
+
+    if (enabled) {
+        m_enabledAnnouncementTypes.insert(type);
+    } else {
+        m_enabledAnnouncementTypes.erase(type);
+    }
+
+    if (wasEnabled != enabled) {
+        // Signal that settings changed (no specific signal for this)
+        qDebug() << "RadioController: Announcement type" << type << (enabled ? "enabled" : "disabled");
+    }
+}
+
+void CRadioController::saveAnnouncementSettings()
+{
+    QSettings settings;
+    settings.beginGroup("Announcements");
+
+    settings.setValue("enabled", m_announcementEnabled);
+    settings.setValue("minPriority", m_minAnnouncementPriority);
+    settings.setValue("maxDuration", m_maxAnnouncementDuration);
+    settings.setValue("allowManualReturn", m_allowManualReturn);
+
+    // Save enabled types
+    QStringList enabledTypes;
+    for (int type : m_enabledAnnouncementTypes) {
+        enabledTypes.append(QString::number(type));
+    }
+    settings.setValue("enabledTypes", enabledTypes);
+
+    settings.endGroup();
+
+    qDebug() << "RadioController: Announcement settings saved";
+}
+
+void CRadioController::resetAnnouncementSettings()
+{
+    // Reset to defaults
+    setAnnouncementEnabled(true);
+    setMinAnnouncementPriority(1);
+    setMaxAnnouncementDuration(300);
+    setAllowManualAnnouncementReturn(true);
+
+    // Enable all types by default
+    m_enabledAnnouncementTypes.clear();
+    for (int i = 0; i <= 10; i++) {
+        m_enabledAnnouncementTypes.insert(i);
+    }
+
+    saveAnnouncementSettings();
+
+    qDebug() << "RadioController: Announcement settings reset to defaults";
 }
