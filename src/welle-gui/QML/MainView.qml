@@ -827,7 +827,7 @@ ApplicationWindow {
             id: stationSettingsLoader
             anchors.right: parent.right
             anchors.left: parent.left
-            height: progress < 1 ? undefined : item.implicitHeight
+            height: (progress < 1 || !item) ? undefined : item.implicitHeight
             source:  "qrc:/QML/settingpages/ChannelSettings.qml"
             onLoaded: isStationNameInWindowTitle = stationSettingsLoader.item.addStationNameToWindowTitleState
         }
@@ -844,7 +844,7 @@ ApplicationWindow {
             id: globalSettingsLoader
             anchors.right: parent.right
             anchors.left: parent.left
-            height: progress < 1 ? undefined : item.implicitHeight
+            height: (progress < 1 || !item) ? undefined : item.implicitHeight
             source:  "qrc:/QML/settingpages/GlobalSettings.qml"
             onLoaded : isFullScreen = globalSettingsLoader.item.enableFullScreenState
         }
@@ -863,7 +863,7 @@ ApplicationWindow {
             id: expertSettingsLoader
             anchors.right: parent.right
             anchors.left: parent.left
-            height: progress < 1 ? undefined : item.implicitHeight
+            height: (progress < 1 || !item) ? undefined : item.implicitHeight
             source:  "qrc:/QML/settingpages/ExpertSettings.qml"
             onLoaded: isExpertView = expertSettingsLoader.item.enableExpertModeState
         }
@@ -881,7 +881,7 @@ ApplicationWindow {
             id: announcementSettingsLoader
             anchors.right: parent.right
             anchors.left: parent.left
-            height: progress < 1 ? undefined : item.implicitHeight
+            height: (progress < 1 || !item) ? undefined : item.implicitHeight
             source:  "qrc:/QML/settingpages/AnnouncementSettings.qml"
         }
     }

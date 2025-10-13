@@ -38,6 +38,17 @@ This fork includes comprehensive support for Thailand's DAB+ broadcasting standa
 
 The implemented framework fully supports official data integration when available.
 
+### Recent Updates
+
+**Phase 3 Wave 2B: GUI Integration Fixes (2025-10-13)**
+- Fixed announcement features accessibility (menu integration)
+- Fixed widget loading from Add menu (Qt.labs.settings imports)
+- Fixed manual channel dropdown visibility and width issues
+- Fixed announcement type quick selection buttons (signal-slot pattern)
+- Enhanced debug logging for component loading
+
+See [docs/phase3/wave2/](docs/phase3/wave2/) for complete documentation.
+
 **Build status**
 - Linux (Flatpak x86_64 and arm64): [![Linux build](https://github.com/AlbrechtL/welle.io/actions/workflows/linux.yml/badge.svg)](https://github.com/AlbrechtL/welle.io/actions/workflows/linux.yml)
 - Windows (Installer x86_64): [![Windows build](https://github.com/AlbrechtL/welle.io/actions/workflows/windows.yml/badge.svg)](https://github.com/AlbrechtL/welle.io/actions/workflows/windows.yml)

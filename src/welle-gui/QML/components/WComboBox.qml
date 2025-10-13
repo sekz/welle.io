@@ -22,7 +22,7 @@
  *    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
- 
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -34,8 +34,13 @@ ComboBox {
 
     property bool sizeToContents
     property int modelWidth
-    // Calculate width with extra space for indicator arrow and padding
-    width: (sizeToContents) ? modelWidth + 60 : implicitWidth  // 60 = padding + indicator + margin
+
+    // Calculate width components explicitly for DPI-aware sizing
+    readonly property int indicatorSpace: indicator ? indicator.width + spacing : 0
+    readonly property int contentPadding: leftPadding + rightPadding
+    readonly property int widthMargin: Units.dp(20)  // Scalable margin
+
+    width: (sizeToContents) ? modelWidth + indicatorSpace + contentPadding + widthMargin : implicitWidth
     Layout.preferredWidth: width
 
     font.pixelSize: TextStyle.textStandartSize
