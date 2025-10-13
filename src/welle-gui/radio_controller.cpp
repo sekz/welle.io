@@ -80,6 +80,8 @@ CRadioController::CRadioController(QVariantMap& commandLineOptions, QObject *par
     , commandLineOptions(commandLineOptions)
     , audioBuffer(2 * AUDIOBUFFERSIZE)
     , audio(audioBuffer)
+    , originalServiceId_(0)
+    , originalSubchannelId_(0)
 {
     // Init the technical data
     resetTechnicalData();
@@ -88,6 +90,7 @@ CRadioController::CRadioController(QVariantMap& commandLineOptions, QObject *par
     connect(&labelTimer, &QTimer::timeout, this, &CRadioController::labelTimerTimeout);
     connect(&stationTimer, &QTimer::timeout, this, &CRadioController::stationTimerTimeout);
     connect(&channelTimer, &QTimer::timeout, this, &CRadioController::channelTimerTimeout);
+    connect(&announcementDurationTimer, &QTimer::timeout, this, &CRadioController::announcementDurationTimerTimeout);
 
     // Use the signal slot mechanism is necessary because the backend runs in a different thread
     connect(this, &CRadioController::switchToNextChannel,
@@ -109,6 +112,14 @@ CRadioController::CRadioController(QVariantMap& commandLineOptions, QObject *par
 
     connect(this, &CRadioController::restartServiceRequested,
             this, &CRadioController::restartService);
+
+    // Initialize announcement manager
+    announcementManager_ = std::make_unique<AnnouncementManager>();
+
+    // Load announcement settings from QSettings
+    loadAnnouncementSettings();
+
+    qDebug() << "RadioController: AnnouncementManager initialized";
 }
 
 CRadioController::~CRadioController()
@@ -252,6 +263,13 @@ void CRadioController::play(QString channel, QString title, quint32 service)
     if (isRestartOk) {
         isPlaying = true;
         emit isPlayingChanged(isPlaying);
+
+        // Store original service for announcement switching
+        if (announcementManager_ && !m_isInAnnouncement) {
+            originalServiceId_ = service;
+            // Note: originalSubchannelId_ will be set when subchannel info is available
+            announcementManager_->setOriginalService(service, 0);  // Subchannel ID will be updated later
+        }
     } else {
         resetTechnicalData();
         currentTitle = title;
@@ -282,6 +300,9 @@ void CRadioController::stop()
 
     audio.stop();
     labelTimer.stop();
+
+    // Stop announcement duration timer
+    announcementDurationTimer.stop();
 }
 
 void CRadioController::setService(uint32_t service, bool force)
@@ -864,6 +885,12 @@ void CRadioController::stationTimerTimeout()
                         else
                             isDAB = true;
                         emit isDABChanged(isDAB);
+
+                        // Update original subchannel ID for announcement switching
+                        if (announcementManager_ && !m_isInAnnouncement) {
+                            originalSubchannelId_ = subch.id;
+                            announcementManager_->setOriginalService(currentService, subch.id);
+                        }
                     }
 
                     return;
@@ -879,6 +906,14 @@ void CRadioController::channelTimerTimeout(void)
 
     if(isChannelScan)
         nextChannel(false);
+}
+
+void CRadioController::announcementDurationTimerTimeout(void)
+{
+    // Update announcement duration every second
+    if (m_isInAnnouncement && announcementManager_) {
+        updateAnnouncementDuration();
+    }
 }
 
 void CRadioController::displayDateTime(const dab_date_time_t& dateTime)
@@ -1141,7 +1176,258 @@ void CRadioController::restartService(void)
     setService(currentService, true);
 }
 
-// P0-2 FIX: Add thread safety to announcement history methods
+// ============================================================================
+// ANNOUNCEMENT BACKEND INTEGRATION
+// ============================================================================
+
+AnnouncementManager* CRadioController::getAnnouncementManager()
+{
+    return announcementManager_.get();
+}
+
+void CRadioController::onAnnouncementSupportUpdate(const ServiceAnnouncementSupport& support)
+{
+    // Called when FIG 0/18 is received (announcement support information)
+    // This updates which services support which announcement types
+
+    if (!announcementManager_) {
+        return;
+    }
+
+    // Update announcement manager with support data
+    announcementManager_->updateAnnouncementSupport(support);
+
+    // Check if any announcements are supported in the ensemble
+    bool hasSupport = support.support_flags.hasAny();
+    if (m_announcementSupported != hasSupport) {
+        m_announcementSupported = hasSupport;
+        emit announcementSupportedChanged(hasSupport);
+    }
+
+    qDebug() << "RadioController: Announcement support updated for service"
+             << QString::number(support.service_id, 16).toUpper()
+             << "- flags:" << QString::number(support.support_flags.flags, 16);
+}
+
+void CRadioController::onAnnouncementSwitchingUpdate(
+    const std::vector<ActiveAnnouncement>& announcements)
+{
+    // Called when FIG 0/19 is received (active announcement information)
+
+    if (!announcementManager_ || !m_announcementEnabled) {
+        return;
+    }
+
+    // Update announcement manager
+    announcementManager_->updateActiveAnnouncements(announcements);
+
+    for (const auto& ann : announcements) {
+        if (!ann.isActive()) {
+            // Announcement ended (ASw = 0x0000)
+            if (m_isInAnnouncement) {
+                ActiveAnnouncement current = announcementManager_->getCurrentAnnouncement();
+                if (ann.cluster_id == current.cluster_id) {
+                    handleAnnouncementEnded(ann);
+                }
+            }
+            continue;
+        }
+
+        // Check if we should switch to this announcement
+        if (announcementManager_->shouldSwitchToAnnouncement(ann)) {
+            handleAnnouncementStarted(ann);
+        }
+    }
+}
+
+void CRadioController::handleAnnouncementStarted(const ActiveAnnouncement& ann)
+{
+    // Check priority if already in announcement
+    if (m_isInAnnouncement) {
+        ActiveAnnouncement current = announcementManager_->getCurrentAnnouncement();
+        int currentPriority = getAnnouncementPriority(current.getHighestPriorityType());
+        int newPriority = getAnnouncementPriority(ann.getHighestPriorityType());
+
+        if (newPriority >= currentPriority) {
+            // Don't switch to lower/equal priority announcement
+            qDebug() << "RadioController: Ignoring lower/equal priority announcement"
+                     << "(current priority:" << currentPriority
+                     << ", new priority:" << newPriority << ")";
+            return;
+        }
+
+        // Higher priority announcement - end current announcement first
+        qDebug() << "RadioController: Switching to higher priority announcement"
+                 << "(current priority:" << currentPriority
+                 << ", new priority:" << newPriority << ")";
+    }
+
+    // Save current service/subchannel if not already in announcement
+    if (!m_isInAnnouncement) {
+        originalServiceId_ = currentService;
+        originalSubchannelId_ = 0;  // Will be updated when available
+
+        qDebug() << "RadioController: Saving original service"
+                 << QString::number(originalServiceId_, 16).toUpper();
+    }
+
+    // Switch to announcement in backend
+    announcementManager_->switchToAnnouncement(ann);
+
+    // TODO: Actually tune to announcement subchannel
+    // This requires:
+    // 1. Find service using subchannel ann.subchannel_id
+    // 2. Call setService() to switch
+    // For now, we just log the switch
+    qDebug() << "RadioController: Would switch to announcement subchannel" << ann.subchannel_id;
+
+    // Update UI state
+    m_isInAnnouncement = true;
+    m_activeAnnouncementType = static_cast<int>(ann.getHighestPriorityType());
+    m_announcementDuration = 0;
+    m_announcementServiceName = QString("Announcement SubCh %1").arg(ann.subchannel_id);
+
+    emit isInAnnouncementChanged(true);
+    emit activeAnnouncementTypeChanged(m_activeAnnouncementType);
+    emit announcementDurationChanged(0);
+    emit announcementServiceNameChanged(m_announcementServiceName);
+
+    // Start duration timer (update every second)
+    announcementDurationTimer.start(1000);
+
+    // Add to history
+    AnnouncementHistoryEntry entry;
+    entry.startTime = QDateTime::currentDateTime();
+    entry.type = m_activeAnnouncementType;
+    entry.serviceName = m_announcementServiceName;
+    entry.durationSeconds = 0;
+    addAnnouncementToHistory(entry);
+
+    qDebug() << "RadioController: Switched to announcement type"
+             << getAnnouncementTypeName(ann.getHighestPriorityType())
+             << "on subchannel" << ann.subchannel_id;
+}
+
+void CRadioController::handleAnnouncementEnded(const ActiveAnnouncement& ann)
+{
+    if (!m_isInAnnouncement) {
+        return;
+    }
+
+    qDebug() << "RadioController: Announcement ended, returning to original service";
+
+    // Return to original service in backend
+    announcementManager_->returnToOriginalService();
+
+    // TODO: Actually tune back to original service
+    // This requires calling setService(originalServiceId_)
+    qDebug() << "RadioController: Would return to service"
+             << QString::number(originalServiceId_, 16).toUpper();
+
+    // Stop duration timer
+    announcementDurationTimer.stop();
+
+    // Update history with end time
+    if (!m_announcementHistory.empty()) {
+        std::lock_guard<std::mutex> lock(m_announcementHistoryMutex);
+        auto& lastEntry = m_announcementHistory.back();
+        lastEntry.endTime = QDateTime::currentDateTime();
+        lastEntry.durationSeconds = m_announcementDuration;
+        emit announcementHistoryChanged();
+    }
+
+    // Update UI state
+    m_isInAnnouncement = false;
+    m_activeAnnouncementType = -1;
+    m_announcementDuration = 0;
+    m_announcementServiceName.clear();
+
+    emit isInAnnouncementChanged(false);
+    emit activeAnnouncementTypeChanged(-1);
+    emit announcementDurationChanged(0);
+    emit announcementServiceNameChanged("");
+
+    qDebug() << "RadioController: Returned from announcement";
+}
+
+void CRadioController::updateAnnouncementDuration()
+{
+    if (!m_isInAnnouncement || !announcementManager_) {
+        return;
+    }
+
+    int duration = announcementManager_->getAnnouncementDuration();
+
+    if (m_announcementDuration != duration) {
+        m_announcementDuration = duration;
+        emit announcementDurationChanged(duration);
+
+        // Check timeout
+        if (duration >= m_maxAnnouncementDuration) {
+            qDebug() << "RadioController: Announcement timeout exceeded, forcing return";
+            ActiveAnnouncement ann;  // Dummy announcement for handleAnnouncementEnded
+            handleAnnouncementEnded(ann);
+        }
+    }
+}
+
+uint8_t CRadioController::getCurrentClusterId() const
+{
+    // TODO: Get cluster ID for current service from FIBProcessor
+    // This requires querying announcement support data
+    // For now, return 0 (default cluster)
+    return 0;
+}
+
+void CRadioController::loadAnnouncementSettings()
+{
+    QSettings settings;
+    settings.beginGroup("Announcements");
+
+    m_announcementEnabled = settings.value("enabled", true).toBool();
+    m_minAnnouncementPriority = settings.value("minPriority", 1).toInt();
+    m_maxAnnouncementDuration = settings.value("maxDuration", 300).toInt();
+    m_allowManualReturn = settings.value("allowManualReturn", true).toBool();
+
+    // Load enabled types
+    QStringList enabledTypes = settings.value("enabledTypes").toStringList();
+    if (!enabledTypes.isEmpty()) {
+        m_enabledAnnouncementTypes.clear();
+        for (const QString& typeStr : enabledTypes) {
+            m_enabledAnnouncementTypes.insert(typeStr.toInt());
+        }
+    } else {
+        // Default: enable all types
+        for (int i = 0; i <= 10; i++) {
+            m_enabledAnnouncementTypes.insert(i);
+        }
+    }
+
+    settings.endGroup();
+
+    // Apply settings to announcement manager
+    if (announcementManager_) {
+        AnnouncementPreferences prefs;
+        prefs.enabled = m_announcementEnabled;
+        prefs.priority_threshold = m_minAnnouncementPriority;
+        prefs.max_announcement_duration = std::chrono::seconds(m_maxAnnouncementDuration);
+        prefs.allow_manual_return = m_allowManualReturn;
+
+        // Copy enabled types
+        for (int type : m_enabledAnnouncementTypes) {
+            prefs.type_enabled[static_cast<AnnouncementType>(type)] = true;
+        }
+
+        announcementManager_->setUserPreferences(prefs);
+    }
+
+    qDebug() << "RadioController: Loaded announcement settings";
+}
+
+// ============================================================================
+// ANNOUNCEMENT UI METHODS
+// ============================================================================
+
 QVariantList CRadioController::announcementHistory()
 {
     std::lock_guard<std::mutex> lock(m_announcementHistoryMutex);
@@ -1165,32 +1451,43 @@ void CRadioController::addAnnouncementToHistory(const AnnouncementHistoryEntry& 
     emit announcementHistoryChanged();
 }
 
-// Announcement settings methods
 void CRadioController::setAnnouncementEnabled(bool enabled)
 {
     if (m_announcementEnabled != enabled) {
         m_announcementEnabled = enabled;
         emit announcementEnabledChanged(enabled);
+
+        // Update backend
+        if (announcementManager_) {
+            AnnouncementPreferences prefs = announcementManager_->getUserPreferences();
+            prefs.enabled = enabled;
+            announcementManager_->setUserPreferences(prefs);
+        }
     }
 }
 
-// P0-3 FIX: Add input validation for setMinAnnouncementPriority
 void CRadioController::setMinAnnouncementPriority(int priority)
 {
-    // Validate range: 0-11 (ETSI EN 300 401 announcement types 0-10, plus type 11)
-    if (priority < 0 || priority > 11) {
+    // Validate range: 1-11 (ETSI EN 300 401 announcement priorities)
+    if (priority < 1 || priority > 11) {
         qDebug() << "RadioController: Invalid announcement priority" << priority
-                 << "- must be in range 0-11 (ETSI EN 300 401). Ignoring.";
+                 << "- must be in range 1-11. Ignoring.";
         return;
     }
 
     if (m_minAnnouncementPriority != priority) {
         m_minAnnouncementPriority = priority;
         emit minAnnouncementPriorityChanged(priority);
+
+        // Update backend
+        if (announcementManager_) {
+            AnnouncementPreferences prefs = announcementManager_->getUserPreferences();
+            prefs.priority_threshold = priority;
+            announcementManager_->setUserPreferences(prefs);
+        }
     }
 }
 
-// P0-3 FIX: Add input validation for setMaxAnnouncementDuration
 void CRadioController::setMaxAnnouncementDuration(int duration)
 {
     // Validate range: 30-600 seconds (30s to 10 minutes)
@@ -1203,6 +1500,13 @@ void CRadioController::setMaxAnnouncementDuration(int duration)
     if (m_maxAnnouncementDuration != duration) {
         m_maxAnnouncementDuration = duration;
         emit maxAnnouncementDurationChanged(duration);
+
+        // Update backend
+        if (announcementManager_) {
+            AnnouncementPreferences prefs = announcementManager_->getUserPreferences();
+            prefs.max_announcement_duration = std::chrono::seconds(duration);
+            announcementManager_->setUserPreferences(prefs);
+        }
     }
 }
 
@@ -1211,24 +1515,35 @@ void CRadioController::setAllowManualAnnouncementReturn(bool allow)
     if (m_allowManualReturn != allow) {
         m_allowManualReturn = allow;
         emit allowManualAnnouncementReturnChanged(allow);
+
+        // Update backend
+        if (announcementManager_) {
+            AnnouncementPreferences prefs = announcementManager_->getUserPreferences();
+            prefs.allow_manual_return = allow;
+            announcementManager_->setUserPreferences(prefs);
+        }
     }
 }
 
 void CRadioController::returnFromAnnouncement()
 {
-    if (m_isInAnnouncement) {
-        m_isInAnnouncement = false;
-        m_activeAnnouncementType = -1;
-        m_announcementDuration = 0;
-        m_announcementServiceName.clear();
+    if (!m_isInAnnouncement) {
+        qDebug() << "RadioController: Not in announcement, cannot return";
+        return;
+    }
 
-        emit isInAnnouncementChanged(false);
-        emit activeAnnouncementTypeChanged(-1);
-        emit announcementDurationChanged(0);
-        emit announcementServiceNameChanged("");
+    // Check if manual return is allowed
+    if (!m_allowManualReturn) {
+        qDebug() << "RadioController: Manual return from announcement is disabled";
+        return;
+    }
 
-        // TODO: Actually switch back to original service when backend is connected
-        qDebug() << "RadioController: Returning from announcement (not yet connected to backend)";
+    qDebug() << "RadioController: Manual return from announcement requested";
+
+    // Get current announcement
+    if (announcementManager_) {
+        ActiveAnnouncement ann = announcementManager_->getCurrentAnnouncement();
+        handleAnnouncementEnded(ann);
     }
 }
 
@@ -1252,8 +1567,12 @@ void CRadioController::setAnnouncementTypeEnabled(int type, bool enabled)
     }
 
     if (wasEnabled != enabled) {
-        // Signal that settings changed (no specific signal for this)
         qDebug() << "RadioController: Announcement type" << type << (enabled ? "enabled" : "disabled");
+
+        // Update backend
+        if (announcementManager_) {
+            announcementManager_->enableAnnouncementType(static_cast<AnnouncementType>(type), enabled);
+        }
     }
 }
 

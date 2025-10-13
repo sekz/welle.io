@@ -49,6 +49,8 @@
 #include "radio-receiver.h"
 #include "ringbuffer.h"
 #include "channels.h"
+#include "../backend/announcement-manager.h"
+#include "../backend/announcement-types.h"
 
 class CVirtualInput;
 
@@ -217,11 +219,25 @@ public:
     Q_INVOKABLE void saveAnnouncementSettings();
     Q_INVOKABLE void resetAnnouncementSettings();
 
+    // Backend integration callbacks (called by FIBProcessor via RadioReceiver)
+    void onAnnouncementSupportUpdate(const ServiceAnnouncementSupport& support);
+    void onAnnouncementSwitchingUpdate(const std::vector<ActiveAnnouncement>& announcements);
+
+    // Get announcement manager reference (for FIBProcessor integration)
+    AnnouncementManager* getAnnouncementManager();
+
 private:
     void initialise(void);
     void resetTechnicalData(void);
     bool deviceRestart(void);
     void addAnnouncementToHistory(const AnnouncementHistoryEntry& entry);
+    void loadAnnouncementSettings();
+
+    // Announcement switching helpers
+    void handleAnnouncementStarted(const ActiveAnnouncement& ann);
+    void handleAnnouncementEnded(const ActiveAnnouncement& ann);
+    uint8_t getCurrentClusterId() const;
+    void updateAnnouncementDuration();
 
     std::shared_ptr<CVirtualInput> device;
     QVariantMap commandLineOptions;
@@ -280,6 +296,7 @@ private:
     QTimer labelTimer;
     QTimer stationTimer;
     QTimer channelTimer;
+    QTimer announcementDurationTimer;  // NEW: Timer for announcement duration updates
 
     bool isChannelScan = false;
     bool isAGC = false;
@@ -291,9 +308,14 @@ private:
     std::unique_ptr<QFile> rawFileAndroid;
 #endif
 
-    // Announcement data
+    // Announcement management (INTEGRATED WITH BACKEND)
+    std::unique_ptr<AnnouncementManager> announcementManager_;
+    uint32_t originalServiceId_;      // Service ID before announcement
+    uint16_t originalSubchannelId_;   // Subchannel ID before announcement
+
+    // Announcement UI state
     std::deque<AnnouncementHistoryEntry> m_announcementHistory;
-    std::mutex m_announcementHistoryMutex;  // P0-2 FIX: Add mutex for thread safety
+    std::mutex m_announcementHistoryMutex;
     bool m_announcementEnabled = true;
     bool m_isInAnnouncement = false;
     int m_activeAnnouncementType = -1;
@@ -303,7 +325,7 @@ private:
     int m_maxAnnouncementDuration = 300;  // 5 minutes default
     bool m_allowManualReturn = true;
     bool m_announcementSupported = false;
-    std::set<int> m_enabledAnnouncementTypes;  // Enabled announcement types
+    std::set<int> m_enabledAnnouncementTypes;
     static const size_t MAX_HISTORY_SIZE = 500;
 
 public slots:
@@ -318,6 +340,7 @@ private slots:
     void labelTimerTimeout(void);
     void stationTimerTimeout(void);
     void channelTimerTimeout(void);
+    void announcementDurationTimerTimeout(void);  // NEW: Update announcement duration
     void nextChannel(bool isWait);
     void displayDateTime(const dab_date_time_t& dateTime);
     void restartService(void);
