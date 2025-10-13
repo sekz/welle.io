@@ -119,11 +119,27 @@ void FIBProcessor::FIG0Extension0 (uint8_t *d)
     uint8_t CN  = getBits_1 (d, 8 + 0);
     (void)CN;
 
+    // ETSI EN 300 401 Section 8.1.2: Al flag (Alarm flag)
+    // Bit 0 of byte containing ensemble info
+    // Al=1: Alarm announcements enabled for this ensemble
+    // Al=0: Alarm announcements disabled
+    uint8_t Al  = getBits_1 (d, 8 + 1);  // Bit 1 (after CN bit)
+
     uint16_t eId  = getBits(d, 16, 16);
 
     if (ensembleId != eId) {
         ensembleId = eId;
         myRadioInterface.onNewEnsemble(ensembleId);
+    }
+
+    // Notify RadioController of Al flag changes
+    static uint8_t previous_Al = 0xFF;  // Invalid initial value
+    if (Al != previous_Al) {
+        previous_Al = Al;
+        bool alarm_enabled = (Al == 1);
+        std::clog << "FIG 0/0: Ensemble Alarm flag Al=" << (int)Al
+                  << " (" << (alarm_enabled ? "ENABLED" : "DISABLED") << ")" << std::endl;
+        myRadioInterface.onAlarmFlagUpdate(alarm_enabled);
     }
 
     changeflag  = getBits_2 (d, 16 + 16);
@@ -759,13 +775,14 @@ void FIBProcessor::FIG0Extension19(uint8_t *d)
     std::vector<ActiveAnnouncement> announcements;
 
     while (offset / 8 < Length - 1) {
-        // Parse FIG 0/19 fields (ETSI EN 300 401 Section 8.1.6.2 Table 16)
-        // Cluster Id: 6 bits (not 8!)
-        uint8_t clusterId   = getBits_6 (d, offset);
-        uint16_t aswFlags   = getBits (d, offset + 6, 16);
-        bool    new_flag    = getBits_1(d, offset + 22);
-        bool    region_flag = getBits_1 (d, offset + 23);
-        uint8_t subChId     = getBits_6 (d, offset + 24);
+        // Parse FIG 0/19 fields (ETSI EN 300 401 V2.1.1 Figure 43)
+        // Cluster Id: 8 bits (per Figure 43: "Cluster Id: 8 bits")
+        // NOTE: Cluster Id = 0xFF (255, '1111 1111') is EXCLUSIVE for Alarm announcements
+        uint8_t clusterId   = getBits_8 (d, offset);
+        uint16_t aswFlags   = getBits (d, offset + 8, 16);
+        bool    new_flag    = getBits_1(d, offset + 24);
+        bool    region_flag = getBits_1 (d, offset + 25);
+        uint8_t subChId     = getBits_6 (d, offset + 26);
 
         // Create ActiveAnnouncement structure
         ActiveAnnouncement announcement;
@@ -778,12 +795,12 @@ void FIBProcessor::FIG0Extension19(uint8_t *d)
 
         // Handle regional information
         if (region_flag) {
-            region_Id_Lower = getBits_6 (d, offset + 30);  // Adjusted: was 34, now 30 (-4 bits)
-            offset += 36;  // Adjusted: was 40, now 36 (-4 bits)
+            region_Id_Lower = getBits_6 (d, offset + 32);  // offset+32: after 8-bit ClusterId + 16-bit ASw + 1-bit new + 1-bit region + 6-bit SubChId
+            offset += 38;  // Total: 8 + 16 + 1 + 1 + 6 + 6 = 38 bits
             (void)region_Id_Lower;  // Store if needed for regional filtering
         }
         else {
-            offset += 30;  // Adjusted: was 32, now 30 (-2 bits for ClusterId fix)
+            offset += 32;  // Total: 8 + 16 + 1 + 1 + 6 = 32 bits (no region_Id_Lower)
         }
 
         // State transition detection

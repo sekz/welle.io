@@ -41,6 +41,7 @@
 
 AnnouncementManager::AnnouncementManager()
     : state_(AnnouncementState::Idle)
+    , ensemble_alarm_enabled_(false)
     , original_service_id_(0)
     , original_subchannel_id_(0)
 {
@@ -95,6 +96,19 @@ AnnouncementPreferences AnnouncementManager::getUserPreferences() const
 {
     std::lock_guard<std::mutex> lock(mutex_);
     return prefs_;  // Return copy
+}
+
+void AnnouncementManager::setEnsembleAlarmEnabled(bool enabled)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    ensemble_alarm_enabled_ = enabled;
+
+    std::clog << "AnnouncementManager: Ensemble Alarm flag (Al) set to "
+              << (enabled ? "ENABLED" : "DISABLED")
+              << " (cluster 0xFF announcements "
+              << (enabled ? "MUST be switched to" : "MUST be ignored") << ")"
+              << std::endl;
 }
 
 // ============================================================================
@@ -224,20 +238,43 @@ bool AnnouncementManager::shouldSwitchToAnnouncement(const ActiveAnnouncement& a
 {
     // Note: Caller must hold mutex_ lock
 
+    std::clog << "AnnouncementManager: shouldSwitchToAnnouncement called for cluster "
+              << static_cast<int>(ann.cluster_id) << std::endl;
+
     // 1. Feature enabled?
     if (!prefs_.enabled) {
-        #ifdef DEBUG_ANNOUNCEMENT
-        std::clog << "AnnouncementManager: Not switching - feature disabled" << std::endl;
-        #endif
+        std::clog << "AnnouncementManager: Not switching - feature DISABLED (prefs_.enabled=false)" << std::endl;
         return false;
     }
+    std::clog << "AnnouncementManager: Check 1 PASS - Feature enabled" << std::endl;
 
     // 2. Announcement active?
     if (!ann.isActive()) {
-        #ifdef DEBUG_ANNOUNCEMENT
-        std::clog << "AnnouncementManager: Not switching - announcement not active" << std::endl;
-        #endif
+        std::clog << "AnnouncementManager: Not switching - announcement NOT ACTIVE (ASw=0x"
+                  << std::hex << ann.active_flags.flags << std::dec << ")" << std::endl;
         return false;
+    }
+    std::clog << "AnnouncementManager: Check 2 PASS - Announcement active (ASw=0x"
+              << std::hex << ann.active_flags.flags << std::dec << ")" << std::endl;
+
+    // SPECIAL CASE: Cluster 0xFF (Alarm) - check Al flag from FIG 0/0
+    // Per ETSI EN 300 401 V2.1.1 Figure 43 (FIG 0/19):
+    // - Cluster ID field is 8 bits (0-255)
+    // - "Cluster Id = '1111 1111' (0xFF/255) shall be used exclusively for all Alarm announcements"
+    // - Al flag (from FIG 0/0 bit 1) controls whether alarm announcements are enabled
+    // - If Al=1: MUST switch (ignore all user preferences)
+    // - If Al=0: MUST ignore (don't switch)
+    if (ann.cluster_id == 0xFF) {  // 255 decimal = ensemble-wide alarm (EXCLUSIVE per ETSI)
+        std::clog << "AnnouncementManager: Cluster 0xFF (ALARM) detected - checking Al flag" << std::endl;
+        if (ensemble_alarm_enabled_) {
+            std::clog << "AnnouncementManager: Al flag = 1 (ENABLED) - MUST SWITCH to alarm (MANDATORY)"
+                      << std::endl;
+            return true;  // MANDATORY SWITCH - ignore all other checks
+        } else {
+            std::clog << "AnnouncementManager: Al flag = 0 (DISABLED) - MUST IGNORE alarm (MANDATORY)"
+                      << std::endl;
+            return false;  // MANDATORY IGNORE - don't switch
+        }
     }
 
     // 3. Already in announcement?
@@ -250,40 +287,44 @@ bool AnnouncementManager::shouldSwitchToAnnouncement(const ActiveAnnouncement& a
 
         if (new_priority >= current_priority) {
             // New announcement has equal or lower priority - don't switch
-            #ifdef DEBUG_ANNOUNCEMENT
             std::clog << "AnnouncementManager: Not switching - already in higher/equal priority announcement"
                       << " (current=" << current_priority << " new=" << new_priority << ")"
                       << std::endl;
-            #endif
             return false;
         }
     }
+    std::clog << "AnnouncementManager: Check 3 PASS - Not in announcement (state="
+              << getStateName(state_) << ")" << std::endl;
 
     // 4. Announcement type enabled?
     AnnouncementType ann_type = ann.getHighestPriorityType();
     if (!isAnnouncementTypeEnabled(ann_type)) {
-        #ifdef DEBUG_ANNOUNCEMENT
         std::clog << "AnnouncementManager: Not switching - type "
                   << getAnnouncementTypeName(ann_type) << " disabled"
                   << std::endl;
-        #endif
         return false;
     }
+    std::clog << "AnnouncementManager: Check 4 PASS - Type "
+              << getAnnouncementTypeName(ann_type) << " enabled" << std::endl;
 
     // 5. Priority threshold met?
     int priority = getAnnouncementPriority(ann_type);
     if (priority > prefs_.priority_threshold) {
-        #ifdef DEBUG_ANNOUNCEMENT
         std::clog << "AnnouncementManager: Not switching - priority " << priority
                   << " below threshold " << prefs_.priority_threshold
                   << std::endl;
-        #endif
         return false;
     }
+    std::clog << "AnnouncementManager: Check 5 PASS - Priority " << priority
+              << " meets threshold " << prefs_.priority_threshold << std::endl;
 
     // 6. Current service participates in announcement cluster?
     // (Only check if we have original service set)
     if (original_service_id_ != 0) {
+        std::clog << "AnnouncementManager: Check 6 - Checking if service 0x"
+                  << std::hex << original_service_id_ << std::dec
+                  << " participates in cluster " << static_cast<int>(ann.cluster_id) << std::endl;
+
         auto it = service_support_.find(original_service_id_);
         if (it != service_support_.end()) {
             // Check if current service participates in the announcement's cluster
@@ -295,26 +336,29 @@ bool AnnouncementManager::shouldSwitchToAnnouncement(const ActiveAnnouncement& a
             ) != it->second.cluster_ids.end();
 
             if (!participates_in_cluster) {
-                #ifdef DEBUG_ANNOUNCEMENT
                 std::clog << "AnnouncementManager: Not switching - current service 0x"
                           << std::hex << original_service_id_ << std::dec
                           << " doesn't participate in cluster "
                           << static_cast<int>(ann.cluster_id) << std::endl;
-                #endif
                 return false;
             }
 
-            #ifdef DEBUG_ANNOUNCEMENT
-            std::clog << "AnnouncementManager: Service 0x"
+            std::clog << "AnnouncementManager: Check 6 PASS - Service 0x"
                       << std::hex << original_service_id_ << std::dec
                       << " participates in cluster "
                       << static_cast<int>(ann.cluster_id)
                       << " - switching allowed" << std::endl;
-            #endif
+        } else {
+            std::clog << "AnnouncementManager: Check 6 - Service 0x"
+                      << std::hex << original_service_id_ << std::dec
+                      << " has NO FIG 0/18 support data" << std::endl;
         }
+    } else {
+        std::clog << "AnnouncementManager: Check 6 SKIP - No original service set (original_service_id_=0)" << std::endl;
     }
 
     // All checks passed - should switch
+    std::clog << "AnnouncementManager: ALL CHECKS PASSED - returning true" << std::endl;
     return true;
 }
 

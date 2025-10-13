@@ -1245,9 +1245,32 @@ void CRadioController::onAnnouncementSwitchingUpdate(
 {
     // Called when FIG 0/19 is received (active announcement information)
 
-    if (!announcementManager_ || !m_announcementEnabled) {
+    std::clog << "RadioController: onAnnouncementSwitchingUpdate called with "
+              << announcements.size() << " announcement(s)" << std::endl;
+
+    if (!announcementManager_) {
+        std::clog << "RadioController: announcementManager_ is NULL!" << std::endl;
         return;
     }
+
+    if (!m_announcementEnabled) {
+        std::clog << "RadioController: Announcements DISABLED in settings (m_announcementEnabled=false)" << std::endl;
+        return;
+    }
+
+    if (announcements.empty()) {
+        std::clog << "RadioController: Empty announcement vector" << std::endl;
+        return;
+    }
+
+    // Log first announcement details
+    const auto& ann = announcements[0];
+    std::clog << "RadioController: First announcement - cluster="
+              << static_cast<int>(ann.cluster_id)
+              << " subchannel=" << static_cast<int>(ann.subchannel_id)
+              << " ASw=0x" << std::hex << ann.active_flags.flags << std::dec
+              << " active=" << (ann.isActive() ? "YES" : "NO")
+              << std::endl;
 
     // Update announcement manager
     announcementManager_->updateActiveAnnouncements(announcements);
@@ -1255,6 +1278,8 @@ void CRadioController::onAnnouncementSwitchingUpdate(
     for (const auto& ann : announcements) {
         if (!ann.isActive()) {
             // Announcement ended (ASw = 0x0000)
+            std::clog << "RadioController: Announcement cluster " << static_cast<int>(ann.cluster_id)
+                      << " is INACTIVE (ASw=0x0000)" << std::endl;
             if (m_isInAnnouncement) {
                 ActiveAnnouncement current = announcementManager_->getCurrentAnnouncement();
                 if (ann.cluster_id == current.cluster_id) {
@@ -1265,9 +1290,27 @@ void CRadioController::onAnnouncementSwitchingUpdate(
         }
 
         // Check if we should switch to this announcement
+        std::clog << "RadioController: Checking if should switch to announcement cluster "
+                  << static_cast<int>(ann.cluster_id) << "..." << std::endl;
         if (announcementManager_->shouldSwitchToAnnouncement(ann)) {
+            std::clog << "RadioController: YES - switching to announcement!" << std::endl;
             handleAnnouncementStarted(ann);
+        } else {
+            std::clog << "RadioController: NO - shouldSwitchToAnnouncement returned false" << std::endl;
         }
+    }
+}
+
+void CRadioController::onAlarmFlagUpdate(bool alarm_enabled)
+{
+    // Called when FIG 0/0 Al flag changes
+    std::clog << "RadioController: Ensemble Alarm flag changed to "
+              << (alarm_enabled ? "ENABLED" : "DISABLED") << std::endl;
+
+    if (announcementManager_) {
+        announcementManager_->setEnsembleAlarmEnabled(alarm_enabled);
+    } else {
+        std::clog << "RadioController: WARNING - announcementManager_ is NULL!" << std::endl;
     }
 }
 

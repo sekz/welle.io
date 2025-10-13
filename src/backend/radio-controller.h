@@ -162,6 +162,14 @@ class RadioControllerInterface {
 
         /* When FIG 0/19 is decoded: Active announcements in the ensemble */
         virtual void onAnnouncementSwitchingUpdate(const std::vector<ActiveAnnouncement>& announcements) { (void)announcements; };
+
+        /* When FIG 0/0 Al flag (Alarm flag) changes
+         * This indicates whether ensemble-wide alarm announcements are enabled.
+         * Per ETSI EN 300 401 Section 8.1.2:
+         * - Al=1: Alarm announcements MUST be switched to (cluster 0xFF)
+         * - Al=0: Alarm announcements MUST be ignored
+         */
+        virtual void onAlarmFlagUpdate(bool alarm_enabled) { (void)alarm_enabled; };
 };
 
 /* A Programme Handler is associated to each tuned programme in the ensemble.

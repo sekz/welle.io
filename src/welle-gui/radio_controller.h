@@ -222,6 +222,7 @@ public:
     // Backend integration callbacks (called by FIBProcessor via RadioReceiver)
     void onAnnouncementSupportUpdate(const ServiceAnnouncementSupport& support);
     void onAnnouncementSwitchingUpdate(const std::vector<ActiveAnnouncement>& announcements);
+    void onAlarmFlagUpdate(bool alarm_enabled);
 
     // Get announcement manager reference (for FIBProcessor integration)
     AnnouncementManager* getAnnouncementManager();

@@ -172,6 +172,19 @@ public:
     void setUserPreferences(const AnnouncementPreferences& prefs);
 
     /**
+     * @brief Set ensemble alarm flag (Al flag from FIG 0/0)
+     * @param enabled true if alarm announcements enabled, false otherwise
+     *
+     * Per ETSI EN 300 401 Section 8.1.2:
+     * - Al=1: Alarm announcements (cluster 0xFF) MUST be switched to
+     * - Al=0: Alarm announcements (cluster 0xFF) MUST be ignored
+     *
+     * This overrides all user preferences for cluster 0xFF announcements.
+     * Thread-safe.
+     */
+    void setEnsembleAlarmEnabled(bool enabled);
+
+    /**
      * @brief Enable/disable specific announcement type
      * @param type Announcement type
      * @param enable true to enable, false to disable
@@ -386,6 +399,7 @@ private:
 
     AnnouncementState state_;                  ///< Current state machine state
     AnnouncementPreferences prefs_;            ///< User preferences
+    bool ensemble_alarm_enabled_;              ///< Al flag from FIG 0/0 (ensemble alarm enabled)
 
     // Current context (saved during announcement)
     uint32_t original_service_id_;             ///< Service ID before announcement
