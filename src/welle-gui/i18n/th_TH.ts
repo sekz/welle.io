@@ -456,4 +456,403 @@
         <translation>ตรวจสอบมาตรฐาน กสทช.</translation>
     </message>
 </context>
+<context>
+    <name>AnnouncementTypes</name>
+    <message>
+        <source>Alarm</source>
+        <translation>เตือนภัย</translation>
+    </message>
+    <message>
+        <source>Traffic</source>
+        <translation>จราจร</translation>
+    </message>
+    <message>
+        <source>Transport Flash</source>
+        <translation>ข่าวด่วนคมนาคม</translation>
+    </message>
+    <message>
+        <source>Warning</source>
+        <translation>คำเตือน</translation>
+    </message>
+    <message>
+        <source>News</source>
+        <translation>ข่าว</translation>
+    </message>
+    <message>
+        <source>Weather</source>
+        <translation>สภาพอากาศ</translation>
+    </message>
+    <message>
+        <source>Event</source>
+        <translation>กิจกรรม</translation>
+    </message>
+    <message>
+        <source>Special Event</source>
+        <translation>กิจกรรมพิเศษ</translation>
+    </message>
+    <message>
+        <source>Programme Info</source>
+        <translation>ข้อมูลรายการ</translation>
+    </message>
+    <message>
+        <source>Sport</source>
+        <translation>กีฬา</translation>
+    </message>
+    <message>
+        <source>Finance</source>
+        <translation>การเงิน</translation>
+    </message>
+</context>
+<context>
+    <name>AnnouncementIndicator</name>
+    <message>
+        <source>Announcement Active</source>
+        <translation>ประกาศฉุกเฉิน</translation>
+    </message>
+    <message>
+        <source>Announcement in Progress</source>
+        <translation>กำลังเล่นประกาศ</translation>
+    </message>
+    <message>
+        <source>Return to Service</source>
+        <translation>กลับสู่รายการ</translation>
+    </message>
+    <message>
+        <source>Return to Programme</source>
+        <translation>กลับสู่รายการปกติ</translation>
+    </message>
+    <message>
+        <source>Duration</source>
+        <translation>ระยะเวลา</translation>
+    </message>
+    <message>
+        <source>Duration: %1</source>
+        <translation>ระยะเวลา: %1</translation>
+    </message>
+    <message>
+        <source>Elapsed Time</source>
+        <translation>เวลาที่ผ่านไป</translation>
+    </message>
+    <message>
+        <source>Type</source>
+        <translation>ประเภท</translation>
+    </message>
+    <message>
+        <source>Cluster</source>
+        <translation>กลุ่ม</translation>
+    </message>
+    <message>
+        <source>Active</source>
+        <translation>ใช้งานอยู่</translation>
+    </message>
+</context>
+<context>
+    <name>AnnouncementSettings</name>
+    <message>
+        <source>Announcement Settings</source>
+        <translation>ตั้งค่าประกาศ</translation>
+    </message>
+    <message>
+        <source>Enable automatic announcement switching</source>
+        <translation>เปิดใช้การสลับประกาศอัตโนมัติ</translation>
+    </message>
+    <message>
+        <source>Announcement Types</source>
+        <translation>ประเภทประกาศ</translation>
+    </message>
+    <message>
+        <source>Priority Threshold</source>
+        <translation>ระดับความสำคัญขั้นต่ำ</translation>
+    </message>
+    <message>
+        <source>Priority</source>
+        <translation>ความสำคัญ</translation>
+    </message>
+    <message>
+        <source>Maximum Duration</source>
+        <translation>ระยะเวลาสูงสุด</translation>
+    </message>
+    <message>
+        <source>Allow manual return to service</source>
+        <translation>อนุญาตให้กลับสู่รายการด้วยตนเอง</translation>
+    </message>
+    <message>
+        <source>Quick Selection</source>
+        <translation>เลือกด่วน</translation>
+    </message>
+    <message>
+        <source>Critical Only</source>
+        <translation>สำคัญเท่านั้น</translation>
+    </message>
+    <message>
+        <source>All Types</source>
+        <translation>ทุกประเภท</translation>
+    </message>
+    <message>
+        <source>Clear All</source>
+        <translation>ยกเลิกทั้งหมด</translation>
+    </message>
+    <message>
+        <source>Reset to Defaults</source>
+        <translation>รีเซ็ตค่าเริ่มต้น</translation>
+    </message>
+    <message>
+        <source>Apply</source>
+        <translation>นำไปใช้</translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation>ยกเลิก</translation>
+    </message>
+    <message>
+        <source>Save</source>
+        <translation>บันทึก</translation>
+    </message>
+    <message>
+        <source>Only announcements with priority %1 or higher</source>
+        <translation>เฉพาะประกาศที่มีความสำคัญตั้งแต่ %1 ขึ้นไป</translation>
+    </message>
+    <message>
+        <source>%1 seconds</source>
+        <translation>%1 วินาที</translation>
+    </message>
+    <message>
+        <source>%1 minutes</source>
+        <translation>%1 นาที</translation>
+    </message>
+    <message>
+        <source>seconds</source>
+        <translation>วินาที</translation>
+    </message>
+    <message>
+        <source>minutes</source>
+        <translation>นาที</translation>
+    </message>
+    <message>
+        <source>hours</source>
+        <translation>ชั่วโมง</translation>
+    </message>
+    <message>
+        <source>Enabled</source>
+        <translation>เปิดใช้</translation>
+    </message>
+    <message>
+        <source>Disabled</source>
+        <translation>ปิดใช้</translation>
+    </message>
+    <message>
+        <source>Announcement Preferences</source>
+        <translation>การตั้งค่าประกาศ</translation>
+    </message>
+    <message>
+        <source>Select announcement types to enable</source>
+        <translation>เลือกประเภทประกาศที่ต้องการเปิดใช้</translation>
+    </message>
+    <message>
+        <source>Priority %1</source>
+        <translation>ความสำคัญ %1</translation>
+    </message>
+</context>
+<context>
+    <name>AnnouncementHistory</name>
+    <message>
+        <source>Announcement History</source>
+        <translation>ประวัติประกาศ</translation>
+    </message>
+    <message>
+        <source>Filter by Type</source>
+        <translation>กรองตามประเภท</translation>
+    </message>
+    <message>
+        <source>Date Range</source>
+        <translation>ช่วงวันที่</translation>
+    </message>
+    <message>
+        <source>From</source>
+        <translation>จาก</translation>
+    </message>
+    <message>
+        <source>To</source>
+        <translation>ถึง</translation>
+    </message>
+    <message>
+        <source>Search Service</source>
+        <translation>ค้นหารายการ</translation>
+    </message>
+    <message>
+        <source>Clear Filters</source>
+        <translation>ล้างตัวกรอง</translation>
+    </message>
+    <message>
+        <source>Showing %1 of %2 announcements</source>
+        <translation>แสดง %1 จาก %2 ประกาศ</translation>
+    </message>
+    <message>
+        <source>No announcements found</source>
+        <translation>ไม่พบประกาศ</translation>
+    </message>
+    <message>
+        <source>No announcements in history</source>
+        <translation>ไม่มีประวัติประกาศ</translation>
+    </message>
+    <message>
+        <source>Statistics</source>
+        <translation>สถิติ</translation>
+    </message>
+    <message>
+        <source>Total Announcements</source>
+        <translation>ประกาศทั้งหมด</translation>
+    </message>
+    <message>
+        <source>This Session</source>
+        <translation>เซสชันนี้</translation>
+    </message>
+    <message>
+        <source>All Time</source>
+        <translation>ตลอดเวลา</translation>
+    </message>
+    <message>
+        <source>Most Frequent</source>
+        <translation>บ่อยที่สุด</translation>
+    </message>
+    <message>
+        <source>Average Duration</source>
+        <translation>ระยะเวลาเฉลี่ย</translation>
+    </message>
+    <message>
+        <source>Last 24 Hours</source>
+        <translation>24 ชั่วโมงที่แล้ว</translation>
+    </message>
+    <message>
+        <source>Last 7 Days</source>
+        <translation>7 วันที่แล้ว</translation>
+    </message>
+    <message>
+        <source>Export to CSV</source>
+        <translation>ส่งออกเป็น CSV</translation>
+    </message>
+    <message>
+        <source>Export History</source>
+        <translation>ส่งออกประวัติ</translation>
+    </message>
+    <message>
+        <source>Export Successful</source>
+        <translation>ส่งออกสำเร็จ</translation>
+    </message>
+    <message>
+        <source>Export Failed</source>
+        <translation>ส่งออกล้มเหลว</translation>
+    </message>
+    <message>
+        <source>Max History Entries</source>
+        <translation>รายการประวัติสูงสุด</translation>
+    </message>
+    <message>
+        <source>Auto-clear on exit</source>
+        <translation>ล้างอัตโนมัติเมื่อปิดโปรแกรม</translation>
+    </message>
+    <message>
+        <source>Clear History</source>
+        <translation>ล้างประวัติ</translation>
+    </message>
+    <message>
+        <source>Confirm Clear History</source>
+        <translation>ยืนยันการล้างประวัติ</translation>
+    </message>
+    <message>
+        <source>Are you sure you want to clear announcement history?</source>
+        <translation>คุณแน่ใจหรือไม่ว่าต้องการล้างประวัติประกาศ?</translation>
+    </message>
+    <message>
+        <source>This action cannot be undone</source>
+        <translation>การดำเนินการนี้ไม่สามารถยกเลิกได้</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>เวลา</translation>
+    </message>
+    <message>
+        <source>Date</source>
+        <translation>วันที่</translation>
+    </message>
+    <message>
+        <source>Service</source>
+        <translation>รายการ</translation>
+    </message>
+    <message>
+        <source>Status</source>
+        <translation>สถานะ</translation>
+    </message>
+</context>
+<context>
+    <name>AnnouncementStatus</name>
+    <message>
+        <source>Announcement started: %1</source>
+        <translation>เริ่มประกาศ: %1</translation>
+    </message>
+    <message>
+        <source>Announcement ended</source>
+        <translation>สิ้นสุดประกาศ</translation>
+    </message>
+    <message>
+        <source>Returned to service</source>
+        <translation>กลับสู่รายการแล้ว</translation>
+    </message>
+    <message>
+        <source>Settings saved</source>
+        <translation>บันทึกการตั้งค่าแล้ว</translation>
+    </message>
+    <message>
+        <source>Export successful</source>
+        <translation>ส่งออกสำเร็จ</translation>
+    </message>
+    <message>
+        <source>Switched to announcement</source>
+        <translation>สลับไปยังประกาศแล้ว</translation>
+    </message>
+    <message>
+        <source>Announcement not available</source>
+        <translation>ประกาศไม่พร้อมใช้งาน</translation>
+    </message>
+    <message>
+        <source>Failed to switch to announcement</source>
+        <translation>ไม่สามารถสลับไปยังประกาศได้</translation>
+    </message>
+    <message>
+        <source>Subchannel not found</source>
+        <translation>ไม่พบช่องย่อย</translation>
+    </message>
+    <message>
+        <source>Service does not support announcements</source>
+        <translation>รายการนี้ไม่รองรับประกาศ</translation>
+    </message>
+    <message>
+        <source>Export failed: %1</source>
+        <translation>ส่งออกล้มเหลว: %1</translation>
+    </message>
+    <message>
+        <source>Invalid date range</source>
+        <translation>ช่วงวันที่ไม่ถูกต้อง</translation>
+    </message>
+    <message>
+        <source>No data to export</source>
+        <translation>ไม่มีข้อมูลสำหรับส่งออก</translation>
+    </message>
+    <message>
+        <source>Announcement type disabled</source>
+        <translation>ประเภทประกาศถูกปิดใช้งาน</translation>
+    </message>
+    <message>
+        <source>Maximum duration exceeded</source>
+        <translation>เกินระยะเวลาสูงสุด</translation>
+    </message>
+    <message>
+        <source>Priority too low</source>
+        <translation>ความสำคัญต่ำเกินไป</translation>
+    </message>
+    <message>
+        <source>Announcement will be skipped</source>
+        <translation>จะข้ามประกาศนี้</translation>
+    </message>
+</context>
 </TS>

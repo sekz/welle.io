@@ -74,6 +74,9 @@ int main(int argc, char** argv)
     // Register custom types
     qmlRegisterType<WaterfallItem>("io.welle", 1, 0, "Waterfall");
     qRegisterMetaType<mot_file_t>("mot_file_t");
+    
+    // Register ThaiDateFormatter singleton
+    qmlRegisterSingletonType(QUrl("qrc:/QML/components/ThaiDateFormatter.qml"), "io.welle", 1, 0, "ThaiDateFormatter");
 
     // Set icon path
     QStringList themePaths = QIcon::themeSearchPaths();
