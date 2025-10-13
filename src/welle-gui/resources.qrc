@@ -93,7 +93,13 @@
         <file>QML/settingpages/RawFileSettings.qml</file>
         <file>QML/settingpages/NullSettings.qml</file>
         <file>QML/settingpages/AirspySettings.qml</file>
+        <file>QML/settingpages/AnnouncementSettings.qml</file>
         <file>QML/components/MessagePopup.qml</file>
+        <file>QML/components/AnnouncementIndicator.qml</file>
+        <file>QML/components/AnnouncementHistory.qml</file>
+        <file>QML/components/ThaiDateFormatter.qml</file>
+        <file>QML/components/ThaiServiceList.qml</file>
+        <file>QML/components/ThaiEPGViewer.qml</file>
         <file>QML/components/WDialog.qml</file>
         <file>QML/components/SettingSection.qml</file>
         <file>QML/components/WSwitch.qml</file>
