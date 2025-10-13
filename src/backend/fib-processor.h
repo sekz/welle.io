@@ -35,6 +35,7 @@
 #include <cstdio>
 #include "msc-handler.h"
 #include "radio-controller.h"
+#include "announcement-types.h"
 
 class FIBProcessor {
     public:
@@ -53,6 +54,25 @@ class FIBProcessor {
         std::list<ServiceComponent> getComponents(const Service& s) const;
         Subchannel getSubchannel(const ServiceComponent& sc) const;
         std::chrono::system_clock::time_point getTimeLastFCT0Frame() const;
+
+        // Announcement support methods (FIG 0/18)
+        // Store announcement support info from FIG 0/18
+        void storeAnnouncementSupport(const ServiceAnnouncementSupport& support);
+
+        // Retrieve announcement support for a service
+        ServiceAnnouncementSupport getAnnouncementSupport(uint32_t service_id) const;
+
+        // Check if service supports announcement type
+        bool serviceSupportsAnnouncement(uint32_t service_id, AnnouncementType type) const;
+
+        // Get all services with announcement support
+        std::vector<uint32_t> getServicesWithAnnouncementSupport() const;
+
+        // Active announcement management (FIG 0/19)
+        void updateActiveAnnouncements(const std::vector<ActiveAnnouncement>& announcements);
+        ActiveAnnouncement getActiveAnnouncement(uint8_t cluster_id) const;
+        std::vector<ActiveAnnouncement> getAllActiveAnnouncements() const;
+        bool isAnnouncementActive(uint8_t cluster_id) const;
 
     private:
         RadioControllerInterface& myRadioInterface;
@@ -132,6 +152,15 @@ class FIBProcessor {
         std::unordered_map<uint32_t, uint8_t> serviceRepeatCount;
         std::chrono::steady_clock::time_point timeLastServiceDecrement;
         std::chrono::system_clock::time_point timeLastFCT0Frame;
+
+        // Announcement support storage (FIG 0/18)
+        // Maps Service ID to announcement support information
+        std::unordered_map<uint32_t, ServiceAnnouncementSupport> announcementSupportMap_;
+        mutable std::mutex announcementSupportMutex_;
+
+        // Active announcements (FIG 0/19)
+        std::unordered_map<uint8_t, ActiveAnnouncement> activeAnnouncementsMap_;  // key = cluster_id
+        mutable std::mutex activeAnnouncementsMutex_;
 };
 
 #endif
