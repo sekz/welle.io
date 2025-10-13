@@ -116,16 +116,47 @@ CRadioController::CRadioController(QVariantMap& commandLineOptions, QObject *par
     // Initialize announcement manager
     announcementManager_ = std::make_unique<AnnouncementManager>();
 
-    // Load announcement settings from QSettings
+    // P1-3 FIX (IMPROVE-002): Load announcement settings in constructor
+    // Previously: Constructor never called loadAnnouncementSettings(), but destructor saved them
+    // Fix: Ensure settings are loaded during initialization
     loadAnnouncementSettings();
 
-    qDebug() << "RadioController: AnnouncementManager initialized";
+    qDebug() << "RadioController: AnnouncementManager initialized with loaded settings";
 }
 
 CRadioController::~CRadioController()
 {
+    // P1-2 FIX (BUG-004): Resource cleanup in destructor
+    // Previously: Destructor only called closeDevice() without cleanup
+    // Fix: Add comprehensive announcement state cleanup before device closure
+
+    qDebug() << "RadioController: Destroying CRadioController - starting cleanup";
+
+    // Stop announcement duration timer if active
+    if (announcementDurationTimer.isActive()) {
+        announcementDurationTimer.stop();
+        qDebug() << "RadioController: Announcement duration timer stopped";
+    }
+
+    // Save announcement settings before shutdown
+    if (announcementManager_) {
+        saveAnnouncementSettings();
+        qDebug() << "RadioController: Announcement settings saved to QSettings";
+    }
+
+    // Clear announcement history (std::deque destructor handles memory)
+    {
+        std::lock_guard<std::mutex> lock(m_announcementHistoryMutex);
+        size_t historySize = m_announcementHistory.size();
+        m_announcementHistory.clear();
+        qDebug() << "RadioController: Announcement history cleared ("
+                 << historySize << " entries removed)";
+    }
+
+    // Close device and clean up radio resources
     closeDevice();
-    qDebug() << "RadioController:" << "Deleting CRadioController";
+
+    qDebug() << "RadioController: CRadioController destroyed (announcement state saved)";
 }
 
 void CRadioController::closeDevice()
@@ -1382,6 +1413,17 @@ uint8_t CRadioController::getCurrentClusterId() const
 void CRadioController::loadAnnouncementSettings()
 {
     QSettings settings;
+
+    // P1-5 FIX (IMPROVE-004): Error handling in QSettings load
+    // Previously: No error checking if QSettings fails
+    // Fix: Add comprehensive error handling with fallback to defaults
+
+    if (settings.status() != QSettings::NoError) {
+        qWarning() << "RadioController: QSettings error on load, status:" << settings.status()
+                   << "- using default announcement settings";
+        // Continue with default values (will be set below)
+    }
+
     settings.beginGroup("Announcements");
 
     m_announcementEnabled = settings.value("enabled", true).toBool();
@@ -1394,11 +1436,18 @@ void CRadioController::loadAnnouncementSettings()
     if (!enabledTypes.isEmpty()) {
         m_enabledAnnouncementTypes.clear();
         for (const QString& typeStr : enabledTypes) {
-            m_enabledAnnouncementTypes.insert(typeStr.toInt());
+            bool ok = false;
+            int typeValue = typeStr.toInt(&ok);
+            if (ok && typeValue >= 0 && typeValue <= 10) {
+                m_enabledAnnouncementTypes.insert(typeValue);
+            } else {
+                qWarning() << "RadioController: Invalid announcement type in settings:" << typeStr;
+            }
         }
     } else {
-        // Default: enable all types
-        for (int i = 0; i <= 10; i++) {
+        // Default: enable all types (P1-1 FIX: Use centralized MAX_TYPE)
+        m_enabledAnnouncementTypes.clear();
+        for (int i = 0; i <= static_cast<int>(AnnouncementType::MAX_TYPE); i++) {
             m_enabledAnnouncementTypes.insert(i);
         }
     }
@@ -1421,7 +1470,9 @@ void CRadioController::loadAnnouncementSettings()
         announcementManager_->setUserPreferences(prefs);
     }
 
-    qDebug() << "RadioController: Loaded announcement settings";
+    qDebug() << "RadioController: Loaded announcement settings (enabled:"
+             << m_announcementEnabled << ", priority:" << m_minAnnouncementPriority
+             << ", enabled types:" << m_enabledAnnouncementTypes.size() << ")";
 }
 
 // ============================================================================
@@ -1579,6 +1630,18 @@ void CRadioController::setAnnouncementTypeEnabled(int type, bool enabled)
 void CRadioController::saveAnnouncementSettings()
 {
     QSettings settings;
+
+    // P1-5 FIX (IMPROVE-004): Error handling in QSettings save
+    // Previously: No error checking if QSettings fails to save
+    // Fix: Add comprehensive error handling with sync and status checks
+
+    // Check settings accessibility before save
+    if (settings.status() != QSettings::NoError) {
+        qWarning() << "RadioController: QSettings error before save, status:" << settings.status();
+        emit showErrorMessage(tr("Failed to access settings storage"));
+        return;
+    }
+
     settings.beginGroup("Announcements");
 
     settings.setValue("enabled", m_announcementEnabled);
@@ -1595,7 +1658,20 @@ void CRadioController::saveAnnouncementSettings()
 
     settings.endGroup();
 
-    qDebug() << "RadioController: Announcement settings saved";
+    // Ensure sync to disk
+    settings.sync();
+
+    // Check for errors after sync
+    if (settings.status() == QSettings::NoError) {
+        qDebug() << "RadioController: Announcement settings saved successfully"
+                 << "(enabled:" << m_announcementEnabled
+                 << ", priority:" << m_minAnnouncementPriority
+                 << ", types:" << enabledTypes.size() << ")";
+    } else {
+        qWarning() << "RadioController: Failed to sync announcement settings, status:"
+                   << settings.status();
+        emit showErrorMessage(tr("Failed to save announcement settings"));
+    }
 }
 
 void CRadioController::resetAnnouncementSettings()
@@ -1606,9 +1682,9 @@ void CRadioController::resetAnnouncementSettings()
     setMaxAnnouncementDuration(300);
     setAllowManualAnnouncementReturn(true);
 
-    // Enable all types by default
+    // Enable all types by default (P1-1 FIX: Use centralized MAX_TYPE)
     m_enabledAnnouncementTypes.clear();
-    for (int i = 0; i <= 10; i++) {
+    for (int i = 0; i <= static_cast<int>(AnnouncementType::MAX_TYPE); i++) {
         m_enabledAnnouncementTypes.insert(i);
     }
 

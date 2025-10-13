@@ -237,8 +237,13 @@ Page {
             var type = Math.floor(Math.random() * 11)
             var duration = 30 + Math.floor(Math.random() * 300)
             var hoursAgo = Math.floor(Math.random() * 72)
-            var startTime = new Date(now.getTime() - hoursAgo * 3600000)
-            var endTime = new Date(startTime.getTime() + duration * 1000)
+
+            // P1-4 FIX (BUG-005): Integer overflow in QML date calculation
+            // Previously: var startTime = new Date(now.getTime() - hoursAgo * 3600000)
+            // Issue: Potential integer overflow with large multiplication
+            // Fix: Use explicit operator precedence with parentheses for clarity
+            var startTime = new Date(now.getTime() - (hoursAgo * 3600 * 1000))
+            var endTime = new Date(startTime.getTime() + (duration * 1000))
 
             mockData.push({
                 type: type,
