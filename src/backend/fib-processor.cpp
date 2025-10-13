@@ -119,18 +119,26 @@ void FIBProcessor::FIG0Extension0 (uint8_t *d)
     uint8_t CN  = getBits_1 (d, 8 + 0);
     (void)CN;
 
-    // ETSI EN 300 401 Section 8.1.2: Al flag (Alarm flag)
-    // Bit 0 of byte containing ensemble info
-    // Al=1: Alarm announcements enabled for this ensemble
-    // Al=0: Alarm announcements disabled
-    uint8_t Al  = getBits_1 (d, 8 + 1);  // Bit 1 (after CN bit)
-
     uint16_t eId  = getBits(d, 16, 16);
 
     if (ensembleId != eId) {
         ensembleId = eId;
         myRadioInterface.onNewEnsemble(ensembleId);
     }
+
+    // Read change flag and Al flag from byte 4
+    // Per ETSI EN 300 401 V2.1.1 Figure 11:
+    // Byte 4 structure:
+    //   Bits 32-33: Change flag (2 bits)
+    //   Bit 34: Al flag (Alarm flag) - THIS IS THE CORRECT POSITION
+    //   Bits 35-39: OE flag, P/D flag, CIF Count (high)
+    changeflag  = getBits_2 (d, 16 + 16);
+
+    // ETSI EN 300 401 V2.1.1 Figure 11: Al flag (Alarm flag)
+    // Al flag is at bit 34 (byte 4, bit position 2 after the 2-bit change flag)
+    // Al=1: Alarm announcements enabled for this ensemble
+    // Al=0: Alarm announcements disabled
+    uint8_t Al  = getBits_1 (d, 16 + 16 + 2);  // Offset: 16 (header+byte1) + 16 (EId) + 2 (changeflag) = bit 34
 
     // Notify RadioController of Al flag changes
     static uint8_t previous_Al = 0xFF;  // Invalid initial value
@@ -141,8 +149,6 @@ void FIBProcessor::FIG0Extension0 (uint8_t *d)
                   << " (" << (alarm_enabled ? "ENABLED" : "DISABLED") << ")" << std::endl;
         myRadioInterface.onAlarmFlagUpdate(alarm_enabled);
     }
-
-    changeflag  = getBits_2 (d, 16 + 16);
 
     highpart        = getBits_5 (d, 16 + 19) % 20;
     (void)highpart;
