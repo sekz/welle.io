@@ -888,8 +888,8 @@ void CRadioController::stationTimerTimeout()
 
                         // Update original subchannel ID for announcement switching
                         if (announcementManager_ && !m_isInAnnouncement) {
-                            originalSubchannelId_ = subch.id;
-                            announcementManager_->setOriginalService(currentService, subch.id);
+                            originalSubchannelId_ = subch.subChId;
+                            announcementManager_->setOriginalService(currentService, subch.subChId);
                         }
                     }
 
