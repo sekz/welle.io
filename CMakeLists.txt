@@ -9,7 +9,7 @@ set(PROJECT_VERSION ${CURRENT_VERSION})
 message ("Building project '${PROJECT_NAME}' version '${PROJECT_VERSION}'...")
 
 if(NOT WELLE-IO_VERSION)
-  set(WELLE-IO_VERSION ${PROJECT_VERSION})
+    set(WELLE-IO_VERSION ${PROJECT_VERSION})
 endif()
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -34,8 +34,8 @@ if(MINGW)
 endif()
 
 if(NOT CMAKE_BUILD_TYPE)
-   set(CMAKE_BUILD_TYPE "Release")
-   message(STATUS "Build type not specified: defaulting to release.")
+    set(CMAKE_BUILD_TYPE "Release")
+    message(STATUS "Build type not specified: defaulting to release.")
 endif(NOT CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "")
 
@@ -77,8 +77,8 @@ endif()
 if(BUILD_WELLE_CLI AND NOT ANDROID)
     find_package(Lame REQUIRED)
     if (FLAC)
-    find_package(FLACPP REQUIRED) # test if FLAC is installed on the system
-    add_definitions(-DHAVE_FLAC)
+        find_package(FLACPP REQUIRED) # test if FLAC is installed on the system
+        add_definitions(-DHAVE_FLAC)
     endif()
 endif()
 
@@ -199,9 +199,9 @@ if (AIRSPY)
 endif()
 
 if (SOAPYSDR)
-  find_package(SoapySDR NO_MODULE REQUIRED)
-  # Note: SoapySDRConfig.cmake sets C++11 standard so it needs to be reset to C++14
-  set(CMAKE_CXX_STANDARD 14)
+    find_package(SoapySDR NO_MODULE REQUIRED)
+    # Note: SoapySDRConfig.cmake sets C++11 standard so it needs to be reset to C++14
+    set(CMAKE_CXX_STANDARD 14)
 endif()
 
 include_directories(
@@ -315,7 +315,7 @@ if(SoapySDR_FOUND)
 endif()
 
 if(NOT GIT_COMMIT_HASH)
-  execute_process(
+    execute_process(
     COMMAND git rev-parse --short HEAD
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     OUTPUT_VARIABLE GIT_COMMIT_HASH
@@ -324,11 +324,11 @@ if(NOT GIT_COMMIT_HASH)
 endif()
 
 if(GIT_COMMIT_HASH)
-  add_definitions("-DGITHASH=\"${GIT_COMMIT_HASH}\"")
+    add_definitions("-DGITHASH=\"${GIT_COMMIT_HASH}\"")
 endif()
 
 if(NOT GIT_DESCRIBE)
-  execute_process(
+    execute_process(
     COMMAND git describe --tags --long
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     OUTPUT_VARIABLE GIT_DESCRIBE
@@ -337,7 +337,7 @@ if(NOT GIT_DESCRIBE)
 endif()
 
 if(GIT_DESCRIBE)
-  add_definitions("-DGITDESCRIBE=\"${GIT_DESCRIBE}\"")
+    add_definitions("-DGITDESCRIBE=\"${GIT_DESCRIBE}\"")
 endif()
 
 add_definitions("-DCURRENT_VERSION=\"${CURRENT_VERSION}\"")
@@ -364,13 +364,13 @@ if(BUILD_WELLE_IO)
           )
 
         if(NOT CMAKE_MATCH_3 STREQUAL "")
-          math(EXPR CURRENT_VERSION_CODE "${CMAKE_MATCH_1} * 100 + ${CMAKE_MATCH_2} * 10 + ${CMAKE_MATCH_3}")
+            math(EXPR CURRENT_VERSION_CODE "${CMAKE_MATCH_1} * 100 + ${CMAKE_MATCH_2} * 10 + ${CMAKE_MATCH_3}")
         else()
-          math(EXPR CURRENT_VERSION_CODE "${CMAKE_MATCH_1} * 100 + ${CMAKE_MATCH_2} * 10")
+            math(EXPR CURRENT_VERSION_CODE "${CMAKE_MATCH_1} * 100 + ${CMAKE_MATCH_2} * 10")
         endif()
 
         if(NOT CMAKE_MATCH_4 STREQUAL "")
-          math(EXPR CURRENT_VERSION_CODE "${CURRENT_VERSION_CODE} - 1")
+            math(EXPR CURRENT_VERSION_CODE "${CURRENT_VERSION_CODE} - 1")
         endif()
 
         message (VERBOSE "CURRENT_VERSION_CODE: '${CURRENT_VERSION_CODE}'")
@@ -469,8 +469,8 @@ if(BUILD_WELLE_CLI AND NOT ANDROID)
         favicon.ico.h)
 
     if(CMAKE_BUILD_TYPE MATCHES Debug)
-      SET_TARGET_PROPERTIES(${cliExecutableName} PROPERTIES COMPILE_FLAGS "-O2 -fno-omit-frame-pointer -fsanitize=address")
-      SET_TARGET_PROPERTIES(${cliExecutableName} PROPERTIES LINK_FLAGS "-fno-omit-frame-pointer -fsanitize=address")
+        SET_TARGET_PROPERTIES(${cliExecutableName} PROPERTIES COMPILE_FLAGS "-O2 -fno-omit-frame-pointer -fsanitize=address")
+        SET_TARGET_PROPERTIES(${cliExecutableName} PROPERTIES LINK_FLAGS "-fno-omit-frame-pointer -fsanitize=address")
     endif(CMAKE_BUILD_TYPE MATCHES Debug)
 
     target_link_libraries (${cliExecutableName}
@@ -526,13 +526,13 @@ add_custom_target(uninstall
     COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 
 if(Qt6Core_FOUND)
-  if(BUILD_WELLE_IO)
-    qt_finalize_target(welle-io)
-  endif()
-  if(CMAKE_VERSION VERSION_LESS "3.19")
-    message("since CMAKE_VERSION=${CMAKE_VERSION}, add qt6_finalize_project")
-    qt6_finalize_project()
-  endif()
+    if(BUILD_WELLE_IO)
+        qt_finalize_target(welle-io)
+    endif()
+    if(CMAKE_VERSION VERSION_LESS "3.19")
+        message("since CMAKE_VERSION=${CMAKE_VERSION}, add qt6_finalize_project")
+        qt6_finalize_project()
+    endif()
 endif()
 
 
@@ -540,4 +540,3 @@ endif()
 if(BUILD_THAILAND_TESTS)
     add_subdirectory(src/tests)
 endif()
-
