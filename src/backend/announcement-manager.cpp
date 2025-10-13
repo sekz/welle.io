@@ -159,18 +159,17 @@ void AnnouncementManager::updateActiveAnnouncements(const std::vector<ActiveAnno
             }
         }
         else if (state_ == AnnouncementState::Idle) {
-            // Check if should switch to this announcement
-            if (shouldSwitchToAnnouncement(ann)) {
-                #ifdef DEBUG_ANNOUNCEMENT
-                std::clog << "AnnouncementManager: Auto-switching to announcement type="
-                          << getAnnouncementTypeName(ann.getHighestPriorityType())
-                          << " subch=" << static_cast<int>(ann.subchannel_id)
-                          << std::endl;
-                #endif
-                // Note: Actual switching coordinated by RadioController
-                // This just triggers state transition
-                transitionState(AnnouncementState::AnnouncementDetected);
-            }
+            // Note: Switching is handled by RadioController calling handleAnnouncementStarted()
+            // Don't duplicate state transitions here to avoid race conditions
+            // if (shouldSwitchToAnnouncement(ann)) {
+            //     #ifdef DEBUG_ANNOUNCEMENT
+            //     std::clog << "AnnouncementManager: Auto-switching to announcement type="
+            //               << getAnnouncementTypeName(ann.getHighestPriorityType())
+            //               << " subch=" << static_cast<int>(ann.subchannel_id)
+            //               << std::endl;
+            //     #endif
+            //     transitionState(AnnouncementState::AnnouncementDetected);
+            // }
         }
     }
 
@@ -282,20 +281,36 @@ bool AnnouncementManager::shouldSwitchToAnnouncement(const ActiveAnnouncement& a
         return false;
     }
 
-    // 6. Current service supports this type?
+    // 6. Current service participates in announcement cluster?
     // (Only check if we have original service set)
     if (original_service_id_ != 0) {
         auto it = service_support_.find(original_service_id_);
         if (it != service_support_.end()) {
-            if (!it->second.supportsType(ann_type)) {
+            // Check if current service participates in the announcement's cluster
+            // (A service can receive announcements from a cluster without producing them)
+            bool participates_in_cluster = std::find(
+                it->second.cluster_ids.begin(),
+                it->second.cluster_ids.end(),
+                ann.cluster_id
+            ) != it->second.cluster_ids.end();
+
+            if (!participates_in_cluster) {
                 #ifdef DEBUG_ANNOUNCEMENT
-                std::clog << "AnnouncementManager: Not switching - service 0x"
+                std::clog << "AnnouncementManager: Not switching - current service 0x"
                           << std::hex << original_service_id_ << std::dec
-                          << " doesn't support type " << getAnnouncementTypeName(ann_type)
-                          << std::endl;
+                          << " doesn't participate in cluster "
+                          << static_cast<int>(ann.cluster_id) << std::endl;
                 #endif
                 return false;
             }
+
+            #ifdef DEBUG_ANNOUNCEMENT
+            std::clog << "AnnouncementManager: Service 0x"
+                      << std::hex << original_service_id_ << std::dec
+                      << " participates in cluster "
+                      << static_cast<int>(ann.cluster_id)
+                      << " - switching allowed" << std::endl;
+            #endif
         }
     }
 
