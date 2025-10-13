@@ -405,6 +405,7 @@ signals:
     void minAnnouncementPriorityChanged(int priority);
     void maxAnnouncementDurationChanged(int duration);
     void allowManualAnnouncementReturnChanged(bool allow);
+    void announcementTypesChanged();  // Emitted when announcement type enable/disable changes
     void announcementHistoryChanged();
 
     void deviceReady();

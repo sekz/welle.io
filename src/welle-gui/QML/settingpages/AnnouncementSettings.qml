@@ -87,12 +87,14 @@ Page {
 
                     // Type checkboxes
                     GridLayout {
+                        id: typeGrid
                         columns: 2
                         columnSpacing: 16
                         rowSpacing: 8
                         Layout.fillWidth: true
 
                         Repeater {
+                            id: typeRepeater
                             model: announcementTypesModel
 
                             RowLayout {
@@ -103,6 +105,15 @@ Page {
                                     id: typeCheckbox
                                     text: modelData.nameTh + " / " + modelData.nameEn
                                     checked: radioController.isAnnouncementTypeEnabled(modelData.type)
+
+                                    // Update checked state when announcement settings change
+                                    Connections {
+                                        target: radioController
+                                        function onAnnouncementTypesChanged() {
+                                            typeCheckbox.checked = radioController.isAnnouncementTypeEnabled(modelData.type)
+                                        }
+                                    }
+
                                     onCheckedChanged: {
                                         if (checked !== radioController.isAnnouncementTypeEnabled(modelData.type)) {
                                             radioController.setAnnouncementTypeEnabled(modelData.type, checked)

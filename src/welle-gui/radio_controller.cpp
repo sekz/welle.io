@@ -1693,6 +1693,9 @@ void CRadioController::setAnnouncementTypeEnabled(int type, bool enabled)
         if (announcementManager_) {
             announcementManager_->enableAnnouncementType(static_cast<AnnouncementType>(type), enabled);
         }
+
+        // Notify QML that announcement types changed
+        emit announcementTypesChanged();
     }
 }
 
