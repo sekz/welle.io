@@ -46,7 +46,7 @@ void FIBProcessor::processFIB(uint8_t *p, uint16_t fib)
     int8_t  processedBytes  = 0;
     uint8_t *d = p;
 
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
 
     (void)fib;
     while (processedBytes  < 30) {
@@ -786,7 +786,7 @@ void FIBProcessor::FIG0Extension19(uint8_t *d)
         }
 
         // State transition detection
-        std::lock_guard<std::mutex> lock(activeAnnouncementsMutex_);
+        std::lock_guard<std::recursive_mutex> lock(activeAnnouncementsMutex_);
 
         auto it = activeAnnouncementsMap_.find(clusterId);
         if (it != activeAnnouncementsMap_.end()) {
@@ -1406,7 +1406,7 @@ void FIBProcessor::dropService(uint32_t SId)
 
 void FIBProcessor::clearEnsemble()
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     components.clear();
     subChannels.resize(64);
     services.clear();
@@ -1415,23 +1415,23 @@ void FIBProcessor::clearEnsemble()
     timeLastFCT0Frame = std::chrono::system_clock::now();
 
     // Clear active announcements
-    std::lock_guard<std::mutex> ann_lock(activeAnnouncementsMutex_);
+    std::lock_guard<std::recursive_mutex> ann_lock(activeAnnouncementsMutex_);
     activeAnnouncementsMap_.clear();
 
     // Clear announcement support (FIG 0/18)
-    std::lock_guard<std::mutex> support_lock(announcementSupportMutex_);
+    std::lock_guard<std::recursive_mutex> support_lock(announcementSupportMutex_);
     announcementSupportMap_.clear();
 }
 
 std::vector<Service> FIBProcessor::getServiceList() const
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     return services;
 }
 
 Service FIBProcessor::getService(uint32_t sId) const
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
 
     auto srv = std::find_if(services.begin(), services.end(),
                 [&](const Service& s) {
@@ -1449,7 +1449,7 @@ Service FIBProcessor::getService(uint32_t sId) const
 std::list<ServiceComponent> FIBProcessor::getComponents(const Service& s) const
 {
     std::list<ServiceComponent> c;
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     for (const auto& component : components) {
         if (component.SId == s.serviceId) {
             c.push_back(component);
@@ -1461,31 +1461,31 @@ std::list<ServiceComponent> FIBProcessor::getComponents(const Service& s) const
 
 Subchannel FIBProcessor::getSubchannel(const ServiceComponent& sc) const
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     return subChannels.at(sc.subchannelId);
 }
 
 uint16_t FIBProcessor::getEnsembleId() const
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     return ensembleId;
 }
 
 uint8_t FIBProcessor::getEnsembleEcc() const
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     return ensembleEcc;
 }
 
 DabLabel FIBProcessor::getEnsembleLabel() const
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     return ensembleLabel;
 }
 
 std::chrono::system_clock::time_point FIBProcessor::getTimeLastFCT0Frame() const
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     return timeLastFCT0Frame;
 }
 
@@ -1498,7 +1498,7 @@ std::chrono::system_clock::time_point FIBProcessor::getTimeLastFCT0Frame() const
  */
 void FIBProcessor::updateActiveAnnouncements(const std::vector<ActiveAnnouncement>& announcements)
 {
-    std::lock_guard<std::mutex> lock(activeAnnouncementsMutex_);
+    std::lock_guard<std::recursive_mutex> lock(activeAnnouncementsMutex_);
 
     for (const auto& announcement : announcements) {
         activeAnnouncementsMap_[announcement.cluster_id] = announcement;
@@ -1519,7 +1519,7 @@ void FIBProcessor::updateActiveAnnouncements(const std::vector<ActiveAnnouncemen
  */
 ActiveAnnouncement FIBProcessor::getActiveAnnouncement(uint8_t cluster_id) const
 {
-    std::lock_guard<std::mutex> lock(activeAnnouncementsMutex_);
+    std::lock_guard<std::recursive_mutex> lock(activeAnnouncementsMutex_);
 
     auto it = activeAnnouncementsMap_.find(cluster_id);
     if (it != activeAnnouncementsMap_.end()) {
@@ -1536,7 +1536,7 @@ ActiveAnnouncement FIBProcessor::getActiveAnnouncement(uint8_t cluster_id) const
  */
 std::vector<ActiveAnnouncement> FIBProcessor::getAllActiveAnnouncements() const
 {
-    std::lock_guard<std::mutex> lock(activeAnnouncementsMutex_);
+    std::lock_guard<std::recursive_mutex> lock(activeAnnouncementsMutex_);
 
     std::vector<ActiveAnnouncement> result;
     for (const auto& pair : activeAnnouncementsMap_) {
@@ -1556,7 +1556,7 @@ std::vector<ActiveAnnouncement> FIBProcessor::getAllActiveAnnouncements() const
  */
 bool FIBProcessor::isAnnouncementActive(uint8_t cluster_id) const
 {
-    std::lock_guard<std::mutex> lock(activeAnnouncementsMutex_);
+    std::lock_guard<std::recursive_mutex> lock(activeAnnouncementsMutex_);
 
     auto it = activeAnnouncementsMap_.find(cluster_id);
     if (it != activeAnnouncementsMap_.end()) {
@@ -1577,7 +1577,7 @@ bool FIBProcessor::isAnnouncementActive(uint8_t cluster_id) const
  */
 void FIBProcessor::storeAnnouncementSupport(const ServiceAnnouncementSupport& support)
 {
-    std::lock_guard<std::mutex> lock(announcementSupportMutex_);
+    std::lock_guard<std::recursive_mutex> lock(announcementSupportMutex_);
     announcementSupportMap_[support.service_id] = support;
 }
 
@@ -1589,7 +1589,7 @@ void FIBProcessor::storeAnnouncementSupport(const ServiceAnnouncementSupport& su
  */
 ServiceAnnouncementSupport FIBProcessor::getAnnouncementSupport(uint32_t service_id) const
 {
-    std::lock_guard<std::mutex> lock(announcementSupportMutex_);
+    std::lock_guard<std::recursive_mutex> lock(announcementSupportMutex_);
 
     auto it = announcementSupportMap_.find(service_id);
     if (it != announcementSupportMap_.end()) {
@@ -1611,7 +1611,7 @@ ServiceAnnouncementSupport FIBProcessor::getAnnouncementSupport(uint32_t service
  */
 bool FIBProcessor::serviceSupportsAnnouncement(uint32_t service_id, AnnouncementType type) const
 {
-    std::lock_guard<std::mutex> lock(announcementSupportMutex_);
+    std::lock_guard<std::recursive_mutex> lock(announcementSupportMutex_);
 
     auto it = announcementSupportMap_.find(service_id);
     if (it != announcementSupportMap_.end()) {
@@ -1628,7 +1628,7 @@ bool FIBProcessor::serviceSupportsAnnouncement(uint32_t service_id, Announcement
  */
 std::vector<uint32_t> FIBProcessor::getServicesWithAnnouncementSupport() const
 {
-    std::lock_guard<std::mutex> lock(announcementSupportMutex_);
+    std::lock_guard<std::recursive_mutex> lock(announcementSupportMutex_);
 
     std::vector<uint32_t> serviceIds;
     for (const auto& entry : announcementSupportMap_) {

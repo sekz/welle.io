@@ -142,7 +142,8 @@ class FIBProcessor {
 
         bool timeOffsetReceived = false;
         dab_date_time_t dateTime = {};
-        mutable std::mutex mutex;
+        // Using recursive_mutex to prevent deadlock when callbacks re-enter FIBProcessor methods
+        mutable std::recursive_mutex mutex;
         uint16_t ensembleId = 0;
         uint8_t ensembleEcc = 0;
         DabLabel ensembleLabel;
@@ -156,11 +157,13 @@ class FIBProcessor {
         // Announcement support storage (FIG 0/18)
         // Maps Service ID to announcement support information
         std::unordered_map<uint32_t, ServiceAnnouncementSupport> announcementSupportMap_;
-        mutable std::mutex announcementSupportMutex_;
+        // Using recursive_mutex to prevent deadlock when callbacks re-enter announcement methods
+        mutable std::recursive_mutex announcementSupportMutex_;
 
         // Active announcements (FIG 0/19)
         std::unordered_map<uint8_t, ActiveAnnouncement> activeAnnouncementsMap_;  // key = cluster_id
-        mutable std::mutex activeAnnouncementsMutex_;
+        // Using recursive_mutex to prevent deadlock when callbacks re-enter announcement methods
+        mutable std::recursive_mutex activeAnnouncementsMutex_;
 };
 
 #endif
