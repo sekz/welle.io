@@ -34,14 +34,17 @@ ComboBox {
 
     property bool sizeToContents
     property int modelWidth
-    width: (sizeToContents) ? modelWidth + 2*leftPadding + 2*rightPadding : implicitWidth
+    // Calculate width with extra space for indicator arrow and padding
+    width: (sizeToContents) ? modelWidth + 60 : implicitWidth  // 60 = padding + indicator + margin
     Layout.preferredWidth: width
 
     font.pixelSize: TextStyle.textStandartSize
+    leftPadding: 12
+    rightPadding: 12
 
     // Ensure text is visible in the ComboBox button
     contentItem: Text {
-        leftPadding: 10
+        leftPadding: 0
         rightPadding: comboBox.indicator.width + comboBox.spacing
         text: comboBox.displayText
         font: comboBox.font
