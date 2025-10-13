@@ -691,9 +691,10 @@ ApplicationWindow {
 
                 WComboBox {
                     id: manualChannelBox
-                    enabled: globalSettingsLoader.item.device != 5 // disable when RAW file is used
+                    enabled: globalSettingsLoader.item && globalSettingsLoader.item.device != 5 // disable when RAW file is used
                     sizeToContents: true
-                    model: ["5A", "5B", "5C", "5D",
+                    model: [
+                        "5A", "5B", "5C", "5D",
                         "6A", "6B", "6C", "6D",
                         "7A", "7B", "7C", "7D",
                         "8A", "8B", "8C", "8D",
@@ -705,9 +706,21 @@ ApplicationWindow {
                         "LA", "LB", "LC", "LD",
                         "LE", "LF", "LG", "LH",
                         "LI", "LJ", "LK", "LL",
-                        "LM", "LN", "LO", "LP"]
+                        "LM", "LN", "LO", "LP"
+                    ]
+                    currentIndex: 0  // Default to first item (5A)
+                    displayText: currentIndex >= 0 ? model[currentIndex] : "Select Channel"
+
+                    // Ensure popup is large enough to show all items
+                    popup.height: Math.min(popup.contentItem.implicitHeight, mainWindow.height * 0.5)
+
+                    Component.onCompleted: {
+                        console.log("Manual channel box initialized with", model.length, "channels")
+                        console.log("Current selection:", currentText)
+                    }
 
                     onActivated: {
+                        console.log("Manual channel selected:", model[index])
                         radioController.setManualChannel(model[index])
                     }
                 }

@@ -39,6 +39,17 @@ ComboBox {
 
     font.pixelSize: TextStyle.textStandartSize
 
+    // Ensure text is visible in the ComboBox button
+    contentItem: Text {
+        leftPadding: 10
+        rightPadding: comboBox.indicator.width + comboBox.spacing
+        text: comboBox.displayText
+        font: comboBox.font
+        color: comboBox.enabled ? TextStyle.textColor : Qt.rgba(TextStyle.textColor.r, TextStyle.textColor.g, TextStyle.textColor.b, 0.3)
+        verticalAlignment: Text.AlignVCenter
+        elide: Text.ElideRight
+    }
+
     delegate: ItemDelegate {
         width: comboBox.width
         contentItem: TextStandart {
