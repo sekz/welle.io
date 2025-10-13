@@ -47,10 +47,16 @@ GridLayout {
     }
 
     function addComponent(path, row, column) {
+        console.debug("=== addComponent called with path:", path, "row:", row, "column:", column);
+        console.debug("=== Current children count:", children.length);
+
         // Check of component already exists
-        for (var i = 0; i < children.length; ++i)
-            if(children[i].sourcePath === path)
+        for (var i = 0; i < children.length; ++i) {
+            if(children[i].sourcePath === path) {
+                console.debug("=== Component already exists at index", i, "- skipping");
                 return;
+            }
+        }
 
         var rows = Math.ceil(Math.sqrt(children.length + 1)) -  1
         var foundCell = false
@@ -82,24 +88,40 @@ GridLayout {
         }
 
         // Create new view
-        console.debug("Creating component: " + path)
+        console.debug("=== Creating component at row:", rowIndex, "column:", columnIndex);
+        console.debug("=== Creating component: " + path)
         var component = Qt.createComponent(path);
+
         if( component.status !== Component.Ready )
         {
             if( component.status === Component.Error )
-                console.debug("Error:"+ component.errorString() );
+                console.debug("=== ERROR creating component:", component.errorString() );
+            else
+                console.debug("=== Component not ready, status:", component.status);
             return;
         }
+
+        console.debug("=== Component ready, creating object...");
         var object = component.createObject(gridLayout);
+
+        if (!object) {
+            console.debug("=== ERROR: createObject returned null");
+            return;
+        }
+
+        console.debug("=== Object created successfully, type:", object.toString());
         object.sourcePath = path; // Save path inside component to make a saving possible
         object.isExpert = Qt.binding(function() { return isExpert })
 
         // Assign cell
         object.Layout.row = rowIndex
         object.Layout.column = columnIndex
+        console.debug("=== Assigned to Layout.row:", rowIndex, "Layout.column:", columnIndex);
+        console.debug("=== Object visibility:", object.visible, "width:", object.width, "height:", object.height);
 
         // Save view
         __serialize()
+        console.debug("=== Component added successfully, new children count:", children.length);
     }
 
     function onRequestPositionChange(sender, row, column) {

@@ -27,7 +27,7 @@ import QtQuick
 import QtCharts
 import QtQuick.Layouts
 import QtCore
-
+import Qt.labs.settings
 
 // Import custom styles
 import "../texts"
