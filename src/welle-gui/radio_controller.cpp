@@ -1273,6 +1273,17 @@ void CRadioController::onAnnouncementSwitchingUpdate(
 
 void CRadioController::handleAnnouncementStarted(const ActiveAnnouncement& ann)
 {
+    // Safety checks
+    if (!radioReceiver || !isPlaying) {
+        qWarning() << "RadioController: Cannot switch - radio not playing";
+        return;
+    }
+
+    if (ann.subchannel_id == 0 || ann.subchannel_id > 63) {
+        qWarning() << "RadioController: Invalid announcement subchannel ID" << ann.subchannel_id;
+        return;
+    }
+
     // Check priority if already in announcement
     if (m_isInAnnouncement) {
         ActiveAnnouncement current = announcementManager_->getCurrentAnnouncement();
@@ -1296,27 +1307,75 @@ void CRadioController::handleAnnouncementStarted(const ActiveAnnouncement& ann)
     // Save current service/subchannel if not already in announcement
     if (!m_isInAnnouncement) {
         originalServiceId_ = currentService;
-        originalSubchannelId_ = 0;  // Will be updated when available
+        originalSubchannelId_ = 0;  // Will be updated if available
+
+        // Try to get current subchannel ID
+        const auto services = radioReceiver->getServiceList();
+        for (const auto& s : services) {
+            if (s.serviceId == currentService) {
+                const auto comps = radioReceiver->getComponents(s);
+                for (const auto& sc : comps) {
+                    if (sc.transportMode() == TransportMode::Audio) {
+                        const auto& subch = radioReceiver->getSubchannel(sc);
+                        if (subch.valid()) {
+                            originalSubchannelId_ = subch.subChId;
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
+        }
 
         qDebug() << "RadioController: Saving original service"
-                 << QString::number(originalServiceId_, 16).toUpper();
+                 << QString::number(originalServiceId_, 16).toUpper()
+                 << "subchannel" << originalSubchannelId_;
     }
 
-    // Switch to announcement in backend
+    // Find service that uses announcement subchannel
+    uint32_t target_service_id = 0;
+    QString target_service_name;
+    const auto services = radioReceiver->getServiceList();
+
+    for (const auto& s : services) {
+        const auto comps = radioReceiver->getComponents(s);
+        for (const auto& sc : comps) {
+            if (sc.transportMode() == TransportMode::Audio && sc.subchannelId == ann.subchannel_id) {
+                const auto& subch = radioReceiver->getSubchannel(sc);
+                if (subch.valid() && subch.subChId == ann.subchannel_id) {
+                    target_service_id = s.serviceId;
+                    target_service_name = QString::fromStdString(s.serviceLabel.utf8_label());
+                    break;
+                }
+            }
+        }
+        if (target_service_id != 0) break;
+    }
+
+    if (target_service_id == 0) {
+        qWarning() << "RadioController: No service found for announcement subchannel"
+                   << ann.subchannel_id;
+        return;
+    }
+
+    // Switch to announcement in backend state
     announcementManager_->switchToAnnouncement(ann);
 
-    // TODO: Actually tune to announcement subchannel
-    // This requires:
-    // 1. Find service using subchannel ann.subchannel_id
-    // 2. Call setService() to switch
-    // For now, we just log the switch
-    qDebug() << "RadioController: Would switch to announcement subchannel" << ann.subchannel_id;
+    // ACTUAL SERVICE SWITCHING - Call existing setService() method
+    qDebug() << "RadioController: Switching to announcement service"
+             << QString::number(target_service_id, 16).toUpper()
+             << "(" << target_service_name << ")"
+             << "on subchannel" << ann.subchannel_id;
+
+    setService(target_service_id, true);  // Force=true to ensure switch
 
     // Update UI state
     m_isInAnnouncement = true;
     m_activeAnnouncementType = static_cast<int>(ann.getHighestPriorityType());
     m_announcementDuration = 0;
-    m_announcementServiceName = QString("Announcement SubCh %1").arg(ann.subchannel_id);
+    m_announcementServiceName = target_service_name.isEmpty()
+        ? QString("Announcement SubCh %1").arg(ann.subchannel_id)
+        : target_service_name;
 
     emit isInAnnouncementChanged(true);
     emit activeAnnouncementTypeChanged(m_activeAnnouncementType);
@@ -1334,7 +1393,7 @@ void CRadioController::handleAnnouncementStarted(const ActiveAnnouncement& ann)
     entry.durationSeconds = 0;
     addAnnouncementToHistory(entry);
 
-    qDebug() << "RadioController: Switched to announcement type"
+    qDebug() << "RadioController: Successfully switched to announcement type"
              << getAnnouncementTypeName(ann.getHighestPriorityType())
              << "on subchannel" << ann.subchannel_id;
 }
@@ -1347,16 +1406,26 @@ void CRadioController::handleAnnouncementEnded(const ActiveAnnouncement& ann)
 
     qDebug() << "RadioController: Announcement ended, returning to original service";
 
-    // Return to original service in backend
+    // Return to original service in backend state
     announcementManager_->returnToOriginalService();
-
-    // TODO: Actually tune back to original service
-    // This requires calling setService(originalServiceId_)
-    qDebug() << "RadioController: Would return to service"
-             << QString::number(originalServiceId_, 16).toUpper();
 
     // Stop duration timer
     announcementDurationTimer.stop();
+
+    // ACTUAL SERVICE RESTORATION - Call existing setService() method
+    if (originalServiceId_ != 0 && radioReceiver) {
+        qDebug() << "RadioController: Restoring original service"
+                 << QString::number(originalServiceId_, 16).toUpper()
+                 << "subchannel" << originalSubchannelId_;
+
+        setService(originalServiceId_, true);  // Force=true to ensure switch
+
+        // Reset saved state
+        originalServiceId_ = 0;
+        originalSubchannelId_ = 0;
+    } else {
+        qWarning() << "RadioController: No original service to restore";
+    }
 
     // Update history with end time
     if (!m_announcementHistory.empty()) {
@@ -1378,7 +1447,7 @@ void CRadioController::handleAnnouncementEnded(const ActiveAnnouncement& ann)
     emit announcementDurationChanged(0);
     emit announcementServiceNameChanged("");
 
-    qDebug() << "RadioController: Returned from announcement";
+    qDebug() << "RadioController: Successfully returned from announcement";
 }
 
 void CRadioController::updateAnnouncementDuration()

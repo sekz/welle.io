@@ -679,31 +679,35 @@ void FIBProcessor::FIG0Extension18(uint8_t *d)
     while (offset / 8 < Length - 1 ) {
         // Parse service ID (16 bits for programme services)
         uint16_t SId = getBits (d, offset, 16);
-        
+
         // Parse Announcement Support flags (16 bits)
         // Each bit represents support for a specific announcement type
         uint16_t AsuFlags = getBits (d, offset + 16, 16);
-        
+
         // Parse number of clusters (5 bits) - located at offset + 35
         int16_t NumClusters = getBits_5 (d, offset + 35);
-        
+
         // Create ServiceAnnouncementSupport structure
         ServiceAnnouncementSupport support;
         support.service_id = SId;
         support.support_flags.flags = AsuFlags;
-        
+
         // Parse cluster IDs (8 bits each, starting at offset + 40)
         support.cluster_ids.clear();
         for (int16_t i = 0; i < NumClusters; i++) {
             uint8_t clusterId = getBits_8(d, offset + 40 + (i * 8));
             support.cluster_ids.push_back(clusterId);
         }
-        
+
         // Store the announcement support information
         storeAnnouncementSupport(support);
-        
+
+        // CALLBACK INTEGRATION: Notify RadioController of announcement support update
+        // This allows the GUI to react to announcement capabilities of services
+        myRadioInterface.onAnnouncementSupportUpdate(support);
+
         // Debug logging
-        std::clog << "fib-processor: FIG 0/18 - Service 0x" << std::hex << SId 
+        std::clog << "fib-processor: FIG 0/18 - Service 0x" << std::hex << SId
                   << " supports announcements 0x" << AsuFlags << std::dec
                   << " in " << NumClusters << " cluster(s)";
         if (NumClusters > 0) {
@@ -714,8 +718,8 @@ void FIBProcessor::FIG0Extension18(uint8_t *d)
             }
             std::clog << "]";
         }
-        std::clog << std::endl;
-        
+        std::clog << " -> RadioController notified" << std::endl;
+
         // Advance offset to next service entry
         // 40 bits (SId + ASu + NumClusters) + NumClusters * 8 bits (cluster IDs)
         offset += 40 + NumClusters * 8;
@@ -844,6 +848,14 @@ void FIBProcessor::FIG0Extension19(uint8_t *d)
 
     // Update stored announcements
     updateActiveAnnouncements(announcements);
+
+    // CALLBACK INTEGRATION: Notify RadioController of announcement switching updates
+    // This triggers announcement switching logic in the GUI layer
+    if (!announcements.empty()) {
+        std::clog << "FIG 0/19: Notifying RadioController of "
+                  << announcements.size() << " announcement(s)" << std::endl;
+        myRadioInterface.onAnnouncementSwitchingUpdate(announcements);
+    }
 }
 
 void FIBProcessor::FIG0Extension21(uint8_t *d)
@@ -1405,7 +1417,7 @@ void FIBProcessor::clearEnsemble()
     // Clear active announcements
     std::lock_guard<std::mutex> ann_lock(activeAnnouncementsMutex_);
     activeAnnouncementsMap_.clear();
-    
+
     // Clear announcement support (FIG 0/18)
     std::lock_guard<std::mutex> support_lock(announcementSupportMutex_);
     announcementSupportMap_.clear();
@@ -1578,12 +1590,12 @@ void FIBProcessor::storeAnnouncementSupport(const ServiceAnnouncementSupport& su
 ServiceAnnouncementSupport FIBProcessor::getAnnouncementSupport(uint32_t service_id) const
 {
     std::lock_guard<std::mutex> lock(announcementSupportMutex_);
-    
+
     auto it = announcementSupportMap_.find(service_id);
     if (it != announcementSupportMap_.end()) {
         return it->second;
     }
-    
+
     // Return empty support if not found
     ServiceAnnouncementSupport empty;
     empty.service_id = service_id;
@@ -1600,12 +1612,12 @@ ServiceAnnouncementSupport FIBProcessor::getAnnouncementSupport(uint32_t service
 bool FIBProcessor::serviceSupportsAnnouncement(uint32_t service_id, AnnouncementType type) const
 {
     std::lock_guard<std::mutex> lock(announcementSupportMutex_);
-    
+
     auto it = announcementSupportMap_.find(service_id);
     if (it != announcementSupportMap_.end()) {
         return it->second.supportsType(type);
     }
-    
+
     return false;
 }
 
@@ -1617,7 +1629,7 @@ bool FIBProcessor::serviceSupportsAnnouncement(uint32_t service_id, Announcement
 std::vector<uint32_t> FIBProcessor::getServicesWithAnnouncementSupport() const
 {
     std::lock_guard<std::mutex> lock(announcementSupportMutex_);
-    
+
     std::vector<uint32_t> serviceIds;
     for (const auto& entry : announcementSupportMap_) {
         // Only include services with at least one announcement type supported
@@ -1625,6 +1637,6 @@ std::vector<uint32_t> FIBProcessor::getServicesWithAnnouncementSupport() const
             serviceIds.push_back(entry.first);
         }
     }
-    
+
     return serviceIds;
 }

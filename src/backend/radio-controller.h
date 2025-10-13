@@ -39,6 +39,10 @@
 #include <complex>
 #include "dab-constants.h"
 
+// Forward declarations for announcement types
+struct ServiceAnnouncementSupport;
+struct ActiveAnnouncement;
+
 struct dab_date_time_t {
     int year = 0;
     int month = 0;
@@ -135,6 +139,29 @@ class RadioControllerInterface {
 
         /* The receiver has to restart due RAW file restart or FIB configuration change*/
         virtual void onRestartService(void) { };
+
+        /* ANNOUNCEMENT CALLBACKS (FIG 0/18 and FIG 0/19)
+         * These callbacks are invoked by FIBProcessor when announcement information is decoded
+         * from the DAB ensemble FIC (Fast Information Channel).
+         *
+         * FIG 0/18: Announcement support
+         * - Called when a service declares which announcement types it supports
+         * - Provides ServiceAnnouncementSupport with service ID, ASu flags, and cluster IDs
+         *
+         * FIG 0/19: Announcement switching
+         * - Called when announcements become active or inactive in the ensemble
+         * - Provides list of ActiveAnnouncement with cluster ID, ASw flags, and subchannel info
+         * - State changes: ASw 0x0000 -> non-zero (STARTED), non-zero -> 0x0000 (ENDED)
+         *
+         * NOTE: These callbacks have default implementations (no-op) to maintain backward
+         * compatibility with CLI applications that don't need announcement support.
+         */
+
+        /* When FIG 0/18 is decoded: Service announces announcement type support */
+        virtual void onAnnouncementSupportUpdate(const ServiceAnnouncementSupport& support) { (void)support; };
+
+        /* When FIG 0/19 is decoded: Active announcements in the ensemble */
+        virtual void onAnnouncementSwitchingUpdate(const std::vector<ActiveAnnouncement>& announcements) { (void)announcements; };
 };
 
 /* A Programme Handler is associated to each tuned programme in the ensemble.
