@@ -338,13 +338,20 @@ void CRadioController::stop()
 
 void CRadioController::setService(uint32_t service, bool force)
 {
+    qDebug() << ">>> setService() called: service=0x" << QString::number(service, 16).toUpper()
+             << "force=" << force
+             << "currentService=0x" << QString::number(currentService, 16).toUpper()
+             << "isPlaying=" << isPlaying;
+
     if (currentService != service or force or isPlaying == false) {
+        qDebug() << ">>> setService(): Condition TRUE - will change service";
         currentService = service;
         autoService = service;
         emit stationChanged();
         emit autoServiceChanged(autoService);
 
         // Wait if we found the station inside the signal
+        qDebug() << ">>> setService(): Starting stationTimer (1000ms delay before actual switch)";
         stationTimer.start(1000);
 
         // Clear old data
@@ -361,6 +368,8 @@ void CRadioController::setService(uint32_t service, bool force)
         emit audioModeChanged(audioMode);
 
         emit motReseted();
+    } else {
+        qDebug() << ">>> setService(): Condition FALSE - NOT changing service (already same service and not forced)";
     }
 }
 
@@ -871,23 +880,35 @@ void CRadioController::labelTimerTimeout()
 
 void CRadioController::stationTimerTimeout()
 {
-    if (!radioReceiver)
+    qDebug() << ">>> stationTimerTimeout() called - currentService=0x" << QString::number(currentService, 16).toUpper();
+
+    if (!radioReceiver) {
+        qDebug() << ">>> stationTimerTimeout(): radioReceiver is NULL - aborting";
         return;
+    }
 
     const auto services = radioReceiver->getServiceList();
+    qDebug() << ">>> stationTimerTimeout(): Found" << services.size() << "services";
 
     for (const auto& s : services) {
         if (s.serviceId == currentService) {
+            qDebug() << ">>> stationTimerTimeout(): Found matching service 0x" << QString::number(s.serviceId, 16).toUpper();
             const auto comps = radioReceiver->getComponents(s);
+            qDebug() << ">>> stationTimerTimeout(): Service has" << comps.size() << "components";
+
             for (const auto& sc : comps) {
                 if (sc.transportMode() == TransportMode::Audio && (
                         sc.audioType() == AudioServiceComponentType::DAB ||
                         sc.audioType() == AudioServiceComponentType::DABPlus) ) {
+                    qDebug() << ">>> stationTimerTimeout(): Found audio component - subchannelId=" << sc.subchannelId;
                     const auto& subch = radioReceiver->getSubchannel(sc);
 
                     if (not subch.valid()) {
+                        qDebug() << ">>> stationTimerTimeout(): Subchannel NOT valid - aborting";
                         return;
                     }
+
+                    qDebug() << ">>> stationTimerTimeout(): Subchannel valid - subChId=" << subch.subChId;
 
                     // We found the station inside the signal, lets stop the timer
                     stationTimer.stop();
@@ -897,11 +918,13 @@ void CRadioController::stationTimerTimeout()
                         dumpFileName = commandLineOptions["dumpFileName"].toString().toStdString();
                     }
 
+                    qDebug() << ">>> stationTimerTimeout(): Calling radioReceiver->playSingleProgramme()...";
                     bool success = radioReceiver->playSingleProgramme(*this, dumpFileName, s);
                     if (!success) {
-                        qDebug() << "Selecting service failed";
+                        qDebug() << ">>> stationTimerTimeout(): ERROR - playSingleProgramme() FAILED";
                     }
                     else {
+                        qDebug() << ">>> stationTimerTimeout(): playSingleProgramme() SUCCESS - subchannel" << subch.subChId;
                         currentStationType = DABConstants::getProgramTypeName(s.programType);
                         emit stationTypChanged();
 
@@ -917,10 +940,18 @@ void CRadioController::stationTimerTimeout()
                             isDAB = true;
                         emit isDABChanged(isDAB);
 
+                        // Track currently playing subchannel (CRITICAL FOR ANNOUNCEMENT DETECTION)
+                        currentPlayingSubchannelId_ = subch.subChId;
+                        qDebug() << ">>> stationTimerTimeout(): *** ACTUAL AUDIO SWITCHED to subchannel" << currentPlayingSubchannelId_ << "***";
+
                         // Update original subchannel ID for announcement switching
                         if (announcementManager_ && !m_isInAnnouncement) {
+                            qDebug() << ">>> stationTimerTimeout(): Updating originalSubchannelId to" << subch.subChId;
                             originalSubchannelId_ = subch.subChId;
                             announcementManager_->setOriginalService(currentService, subch.subChId);
+                        } else if (m_isInAnnouncement) {
+                            qDebug() << ">>> stationTimerTimeout(): IN ANNOUNCEMENT MODE - switched to announcement audio";
+                            qDebug() << "    Announcement audio now playing on subchannel" << subch.subChId;
                         }
                     }
 
@@ -929,6 +960,8 @@ void CRadioController::stationTimerTimeout()
             }
         }
     }
+
+    qDebug() << ">>> stationTimerTimeout(): No matching service found!";
 }
 
 void CRadioController::channelTimerTimeout(void)
@@ -1290,14 +1323,26 @@ void CRadioController::onAnnouncementSwitchingUpdate(
         }
 
         // Check if we should switch to this announcement
-        std::clog << "RadioController: Checking if should switch to announcement cluster "
-                  << static_cast<int>(ann.cluster_id) << "..." << std::endl;
+        std::clog << "RadioController: ================================================" << std::endl;
+        std::clog << "RadioController: Checking if should switch to announcement:" << std::endl;
+        std::clog << "  - Cluster: " << static_cast<int>(ann.cluster_id) << std::endl;
+        std::clog << "  - Subchannel: " << static_cast<int>(ann.subchannel_id) << std::endl;
+        std::clog << "  - ASw flags: 0x" << std::hex << ann.active_flags.flags << std::dec << std::endl;
+        std::clog << "  - Current service: 0x" << std::hex << currentService << std::dec << std::endl;
+        std::clog << "  - Is playing: " << (isPlaying ? "YES" : "NO") << std::endl;
+        std::clog << "  - Announcement enabled: " << (m_announcementEnabled ? "YES" : "NO") << std::endl;
+        std::clog << "RadioController: Calling shouldSwitchToAnnouncement()..." << std::endl;
+
         if (announcementManager_->shouldSwitchToAnnouncement(ann)) {
-            std::clog << "RadioController: YES - switching to announcement!" << std::endl;
+            std::clog << "RadioController: ✓ YES - shouldSwitchToAnnouncement returned TRUE" << std::endl;
+            std::clog << "RadioController: Now calling handleAnnouncementStarted()..." << std::endl;
             handleAnnouncementStarted(ann);
+            std::clog << "RadioController: handleAnnouncementStarted() completed" << std::endl;
         } else {
-            std::clog << "RadioController: NO - shouldSwitchToAnnouncement returned false" << std::endl;
+            std::clog << "RadioController: ✗ NO - shouldSwitchToAnnouncement returned FALSE" << std::endl;
+            std::clog << "RadioController: Check AnnouncementManager debug output above for reason" << std::endl;
         }
+        std::clog << "RadioController: ================================================" << std::endl;
     }
 }
 
@@ -1316,6 +1361,12 @@ void CRadioController::onAlarmFlagUpdate(bool alarm_enabled)
 
 void CRadioController::handleAnnouncementStarted(const ActiveAnnouncement& ann)
 {
+    qDebug() << ">>> handleAnnouncementStarted() called";
+    qDebug() << "  - Announcement cluster:" << static_cast<int>(ann.cluster_id);
+    qDebug() << "  - Announcement subchannel:" << ann.subchannel_id;
+    qDebug() << "  - m_isInAnnouncement:" << m_isInAnnouncement;
+    qDebug() << "  - currentService: 0x" << QString::number(currentService, 16).toUpper();
+
     // Safety checks
     if (!radioReceiver || !isPlaying) {
         qWarning() << "RadioController: Cannot switch - radio not playing";
@@ -1327,24 +1378,29 @@ void CRadioController::handleAnnouncementStarted(const ActiveAnnouncement& ann)
         return;
     }
 
-    // Check priority if already in announcement
+    // Check if already in announcement
     if (m_isInAnnouncement) {
-        ActiveAnnouncement current = announcementManager_->getCurrentAnnouncement();
-        int currentPriority = getAnnouncementPriority(current.getHighestPriorityType());
-        int newPriority = getAnnouncementPriority(ann.getHighestPriorityType());
+        qDebug() << ">>> Already in announcement state - checking ACTUAL playing subchannel...";
+        qDebug() << "  - ACTUAL playing subchannel:" << currentPlayingSubchannelId_;
+        qDebug() << "  - Announcement target subchannel:" << ann.subchannel_id;
 
-        if (newPriority >= currentPriority) {
-            // Don't switch to lower/equal priority announcement
-            qDebug() << "RadioController: Ignoring lower/equal priority announcement"
-                     << "(current priority:" << currentPriority
-                     << ", new priority:" << newPriority << ")";
+        // FIXED LOGIC: Check if ACTUALLY playing the announcement subchannel
+        if (currentPlayingSubchannelId_ == ann.subchannel_id) {
+            qDebug() << ">>> Already ACTUALLY playing announcement subchannel" << ann.subchannel_id
+                     << "- ignoring repeat FIG 0/19";
             return;
         }
 
-        // Higher priority announcement - end current announcement first
-        qDebug() << "RadioController: Switching to higher priority announcement"
-                 << "(current priority:" << currentPriority
-                 << ", new priority:" << newPriority << ")";
+        // Different subchannel - audio hasn't switched yet!
+        qDebug() << ">>> WARNING: m_isInAnnouncement=true but NOT playing announcement subchannel!";
+        qDebug() << "    This means stationTimer hasn't fired yet or setService() failed";
+        qDebug() << "    Current audio: subchannel" << currentPlayingSubchannelId_;
+        qDebug() << "    Target announcement: subchannel" << ann.subchannel_id;
+        qDebug() << "    ACTION: Will CONTINUE with switch attempt";
+
+        // Don't return - continue to switch
+    } else {
+        qDebug() << ">>> NOT in announcement - will start new announcement";
     }
 
     // Save current service/subchannel if not already in announcement
@@ -1376,41 +1432,96 @@ void CRadioController::handleAnnouncementStarted(const ActiveAnnouncement& ann)
     }
 
     // Find service that uses announcement subchannel
+    qDebug() << "=====================================================";
+    qDebug() << "RadioController: Looking for service using announcement subchannel" << ann.subchannel_id;
+    qDebug() << "RadioController: Announcement cluster:" << static_cast<int>(ann.cluster_id)
+             << "ASw flags: 0x" << QString::number(ann.active_flags.flags, 16).toUpper();
+
     uint32_t target_service_id = 0;
     QString target_service_name;
     const auto services = radioReceiver->getServiceList();
 
+    qDebug() << "RadioController: Found" << services.size() << "services in ensemble";
+
     for (const auto& s : services) {
+        qDebug() << "  Service 0x" << QString::number(s.serviceId, 16).toUpper()
+                 << "(" << QString::fromStdString(s.serviceLabel.utf8_label()) << ")";
+
         const auto comps = radioReceiver->getComponents(s);
+        qDebug() << "    Components:" << comps.size();
+
         for (const auto& sc : comps) {
-            if (sc.transportMode() == TransportMode::Audio && sc.subchannelId == ann.subchannel_id) {
+            qDebug() << "      Component: subchannelId=" << sc.subchannelId
+                     << "transportMode=" << (sc.transportMode() == TransportMode::Audio ? "Audio" : "Data");
+
+            if (sc.transportMode() == TransportMode::Audio) {
                 const auto& subch = radioReceiver->getSubchannel(sc);
-                if (subch.valid() && subch.subChId == ann.subchannel_id) {
-                    target_service_id = s.serviceId;
-                    target_service_name = QString::fromStdString(s.serviceLabel.utf8_label());
-                    break;
+                qDebug() << "        Subchannel: valid=" << subch.valid()
+                         << "subChId=" << (subch.valid() ? subch.subChId : -1)
+                         << "bitrate=" << (subch.valid() ? subch.bitrate() : -1);
+
+                if (sc.subchannelId == ann.subchannel_id) {
+                    qDebug() << "        >>> MATCH: subchannelId matches announcement subchannel!";
+                    if (subch.valid() && subch.subChId == ann.subchannel_id) {
+                        target_service_id = s.serviceId;
+                        target_service_name = QString::fromStdString(s.serviceLabel.utf8_label());
+                        qDebug() << "        >>> FOUND TARGET SERVICE: 0x"
+                                 << QString::number(target_service_id, 16).toUpper()
+                                 << "(" << target_service_name << ")";
+                        break;
+                    } else {
+                        qDebug() << "        >>> WARNING: subchannelId matches but subchannel invalid or ID mismatch";
+                    }
                 }
             }
         }
         if (target_service_id != 0) break;
     }
 
+    qDebug() << "=====================================================";
+
     if (target_service_id == 0) {
-        qWarning() << "RadioController: No service found for announcement subchannel"
-                   << ann.subchannel_id;
+        qWarning() << "RadioController: ERROR - No service found for announcement subchannel" << ann.subchannel_id;
+        qWarning() << "RadioController: This means the announcement references a subchannel that doesn't exist";
+        qWarning() << "RadioController: or isn't mapped to any audio service component";
         return;
     }
 
-    // Switch to announcement in backend state
-    announcementManager_->switchToAnnouncement(ann);
-
-    // ACTUAL SERVICE SWITCHING - Call existing setService() method
-    qDebug() << "RadioController: Switching to announcement service"
+    qDebug() << "RadioController: Target identified - Service 0x"
              << QString::number(target_service_id, 16).toUpper()
-             << "(" << target_service_name << ")"
              << "on subchannel" << ann.subchannel_id;
 
-    setService(target_service_id, true);  // Force=true to ensure switch
+    // Switch to announcement in backend state
+    qDebug() << "RadioController: Calling announcementManager_->switchToAnnouncement()...";
+    announcementManager_->switchToAnnouncement(ann);
+    qDebug() << "RadioController: announcementManager_->switchToAnnouncement() completed";
+
+    // ACTUAL SERVICE SWITCHING - Call existing setService() method
+    qDebug() << "=====================================================";
+    qDebug() << "RadioController: *** ABOUT TO SWITCH SERVICE ***";
+    qDebug() << "RadioController: Current service: 0x" << QString::number(currentService, 16).toUpper();
+    qDebug() << "RadioController: Target service:  0x" << QString::number(target_service_id, 16).toUpper();
+    qDebug() << "RadioController: Target name: " << target_service_name;
+    qDebug() << "RadioController: Target subchannel: " << ann.subchannel_id;
+    qDebug() << "RadioController: Calling setService(" << QString::number(target_service_id, 16).toUpper() << ", true)...";
+    qDebug() << "RadioController: Using QMetaObject::invokeMethod to ensure main thread execution";
+
+    // CRITICAL FIX: Must call setService() from main thread to avoid timer warnings
+    // "QObject::startTimer: Timers cannot be started from another thread"
+    bool invoked = QMetaObject::invokeMethod(this, "setService",
+                                              Qt::QueuedConnection,
+                                              Q_ARG(quint32, target_service_id),
+                                              Q_ARG(bool, true));
+
+    if (!invoked) {
+        qWarning() << "RadioController: ERROR - Failed to invoke setService()";
+        return;
+    }
+
+    qDebug() << "RadioController: setService() invoked successfully (will execute in main thread)";
+    qDebug() << "=====================================================";
+
+    // Note: Service switch happens asynchronously, can't check currentService immediately
 
     // Update UI state
     m_isInAnnouncement = true;
@@ -1806,4 +1917,64 @@ void CRadioController::resetAnnouncementSettings()
     saveAnnouncementSettings();
 
     qDebug() << "RadioController: Announcement settings reset to defaults";
+}
+
+// ============================================================================
+// EWS Location Code Management
+// ============================================================================
+
+bool CRadioController::setLocationCode(const QString& code)
+{
+    if (!m_announcementManager) {
+        qWarning() << "RadioController: Cannot set location code - announcement manager not initialized";
+        return false;
+    }
+
+    bool success = m_announcementManager->setLocationCode(code.toStdString());
+
+    if (success) {
+        qDebug() << "RadioController: Location code set to" << code;
+    } else {
+        qWarning() << "RadioController: Invalid location code:" << code;
+    }
+
+    return success;
+}
+
+void CRadioController::clearLocationCode()
+{
+    if (!m_announcementManager) {
+        qWarning() << "RadioController: Cannot clear location code - announcement manager not initialized";
+        return;
+    }
+
+    m_announcementManager->clearLocationCode();
+    qDebug() << "RadioController: Location code cleared";
+}
+
+bool CRadioController::hasLocationCode() const
+{
+    if (!m_announcementManager) {
+        return false;
+    }
+
+    return m_announcementManager->hasLocationCode();
+}
+
+QString CRadioController::locationCodeDisplay() const
+{
+    if (!m_announcementManager) {
+        return QString();
+    }
+
+    return QString::fromStdString(m_announcementManager->getLocationCodeDisplay());
+}
+
+QString CRadioController::locationCodeHex() const
+{
+    if (!m_announcementManager) {
+        return QString();
+    }
+
+    return QString::fromStdString(m_announcementManager->getLocationCodeHex());
 }

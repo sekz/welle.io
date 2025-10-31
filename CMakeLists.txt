@@ -230,6 +230,7 @@ set(backend_sources
     src/backend/dab-constants.cpp
     src/backend/announcement-types.cpp
     src/backend/announcement-manager.cpp
+    src/backend/location-code-manager.cpp
     src/backend/mot_manager.cpp
     src/backend/pad_decoder.cpp
     src/backend/eep-protection.cpp

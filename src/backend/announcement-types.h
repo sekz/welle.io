@@ -207,6 +207,11 @@ struct ActiveAnnouncement {
     std::chrono::steady_clock::time_point start_time;         ///< When announcement was first detected
     std::chrono::steady_clock::time_point last_update;        ///< Last FIG 0/19 update time
 
+    // EWS location data (ETSI TS 104 090)
+    bool has_location_data = false;                           ///< true if location_data is valid
+    uint8_t location_data[4] = {0};                           ///< Location code (4 bytes from FIG 0/19)
+    uint8_t location_nff = 0;                                 ///< Nibble Fill Flag (0xF, 0xE, 0xC, 0x8)
+
     /**
      * @brief Default constructor initializes timestamps to now
      */

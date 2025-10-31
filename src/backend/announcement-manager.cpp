@@ -319,7 +319,8 @@ bool AnnouncementManager::shouldSwitchToAnnouncement(const ActiveAnnouncement& a
               << " meets threshold " << prefs_.priority_threshold << std::endl;
 
     // 6. Current service participates in announcement cluster?
-    // (Only check if we have original service set)
+    // (Only check if we have original service set AND FIG 0/18 data available)
+    // Note: This is an OPTIONAL check - if no FIG 0/18 data, allow switch anyway
     if (original_service_id_ != 0) {
         std::clog << "AnnouncementManager: Check 6 - Checking if service 0x"
                   << std::hex << original_service_id_ << std::dec
@@ -327,7 +328,7 @@ bool AnnouncementManager::shouldSwitchToAnnouncement(const ActiveAnnouncement& a
 
         auto it = service_support_.find(original_service_id_);
         if (it != service_support_.end()) {
-            // Check if current service participates in the announcement's cluster
+            // FIG 0/18 data exists - check if current service participates in the announcement's cluster
             // (A service can receive announcements from a cluster without producing them)
             bool participates_in_cluster = std::find(
                 it->second.cluster_ids.begin(),
@@ -349,12 +350,56 @@ bool AnnouncementManager::shouldSwitchToAnnouncement(const ActiveAnnouncement& a
                       << static_cast<int>(ann.cluster_id)
                       << " - switching allowed" << std::endl;
         } else {
-            std::clog << "AnnouncementManager: Check 6 - Service 0x"
+            // No FIG 0/18 data - check strict mode setting
+            if (!prefs_.allow_announcement_without_fig_018) {
+                // Strict ETSI mode - block if no FIG 0/18
+                std::clog << "AnnouncementManager: Check 6 FAIL - Service 0x"
+                          << std::hex << original_service_id_ << std::dec
+                          << " has NO FIG 0/18 support data (strict mode)" << std::endl;
+                return false;
+            }
+            // Permissive mode - allow switch (can't verify cluster membership)
+            std::clog << "AnnouncementManager: Check 6 PASS (no FIG 0/18 data) - Service 0x"
                       << std::hex << original_service_id_ << std::dec
-                      << " has NO FIG 0/18 support data" << std::endl;
+                      << " has NO FIG 0/18 support data - allowing switch (permissive mode)"
+                      << std::endl;
         }
     } else {
-        std::clog << "AnnouncementManager: Check 6 SKIP - No original service set (original_service_id_=0)" << std::endl;
+        std::clog << "AnnouncementManager: Check 6 SKIP - No original service set (original_service_id_=0)"
+                  << " - allowing switch" << std::endl;
+    }
+
+    // 7. EWS Location Code Check (ETSI TS 104 090)
+    // If receiver location is set AND announcement has location data, verify match
+    if (location_code_manager_.hasReceiverLocation() && ann.has_location_data) {
+        std::clog << "AnnouncementManager: Check 7 - EWS location filtering enabled"
+                  << " (receiver location set, announcement has location data)" << std::endl;
+
+        // Extract NFF (Nibble Fill Flag) from announcement data
+        // NFF determines matching granularity: 0xF (L3), 0xE (L3+L4), 0xC (L3+L4+L5), 0x8 (L3+L4+L5+L6)
+        uint8_t nff = ann.location_nff;
+
+        bool location_matches = location_code_manager_.matchesAlertLocation(
+            ann.location_data, nff);
+
+        if (!location_matches) {
+            std::clog << "AnnouncementManager: Check 7 FAIL - Location MISMATCH"
+                      << " (NFF=0x" << std::hex << static_cast<int>(nff) << std::dec << ")"
+                      << " - NOT switching" << std::endl;
+            return false;
+        }
+
+        std::clog << "AnnouncementManager: Check 7 PASS - Location MATCHES"
+                  << " (NFF=0x" << std::hex << static_cast<int>(nff) << std::dec << ")"
+                  << " - switching allowed" << std::endl;
+    } else {
+        if (!location_code_manager_.hasReceiverLocation()) {
+            std::clog << "AnnouncementManager: Check 7 SKIP - No receiver location set"
+                      << " - allowing all announcements" << std::endl;
+        } else {
+            std::clog << "AnnouncementManager: Check 7 SKIP - Announcement has no location data"
+                      << " - allowing switch" << std::endl;
+        }
     }
 
     // All checks passed - should switch
@@ -604,4 +649,38 @@ const char* AnnouncementManager::getStateName(AnnouncementState state) const
         default:
             return "Unknown";
     }
+}
+
+// ============================================================================
+// EWS Location Code Management
+// ============================================================================
+
+bool AnnouncementManager::setLocationCode(const std::string& code)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return location_code_manager_.setReceiverLocation(code);
+}
+
+void AnnouncementManager::clearLocationCode()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    location_code_manager_.clearReceiverLocation();
+}
+
+bool AnnouncementManager::hasLocationCode() const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return location_code_manager_.hasReceiverLocation();
+}
+
+std::string AnnouncementManager::getLocationCodeDisplay() const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return location_code_manager_.toDisplayFormat();
+}
+
+std::string AnnouncementManager::getLocationCodeHex() const
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    return location_code_manager_.toHexFormat();
 }

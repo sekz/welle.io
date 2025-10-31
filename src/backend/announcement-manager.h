@@ -27,6 +27,7 @@
 #define ANNOUNCEMENT_MANAGER_H
 
 #include "announcement-types.h"
+#include "location-code-manager.h"
 #include <cstdint>
 #include <chrono>
 #include <mutex>
@@ -81,6 +82,11 @@ struct AnnouncementPreferences {
     // If announcement exceeds this, auto-return to original service
     // Prevents being stuck in announcement if ASw never goes to 0x0000
     std::chrono::seconds max_announcement_duration{300};  // 5 minutes default
+
+    // Strict ETSI compliance mode for cluster membership check
+    // - true (default): Allow switching even without FIG 0/18 data (permissive, real-world compatible)
+    // - false: Block switching if no FIG 0/18 data exists (strict ETSI compliance)
+    bool allow_announcement_without_fig_018 = true;
 
     // Default constructor initializes all types as enabled
     AnnouncementPreferences() {
@@ -377,6 +383,57 @@ public:
     uint8_t getOriginalSubchannelId() const;
 
     // ========================================================================
+    // EWS Location Code Management
+    // ========================================================================
+
+    /**
+     * @brief Set receiver location code for EWS filtering
+     * @param code Location code in format "1255-4467-1352" or "Z1:91BB82"
+     * @return true if valid and set, false if invalid
+     *
+     * Used for Emergency Warning System (ETSI TS 104 090) to filter
+     * announcements by geographic location. Only announcements matching
+     * the receiver's location will trigger switching.
+     *
+     * Thread-safe.
+     */
+    bool setLocationCode(const std::string& code);
+
+    /**
+     * @brief Clear receiver location code
+     *
+     * After clearing, location-based filtering is disabled and all
+     * announcements are processed regardless of location data.
+     *
+     * Thread-safe.
+     */
+    void clearLocationCode();
+
+    /**
+     * @brief Check if receiver location is set
+     * @return true if location set, false otherwise
+     *
+     * Thread-safe.
+     */
+    bool hasLocationCode() const;
+
+    /**
+     * @brief Get current location code (display format)
+     * @return Location code in format "1255-4467-1352", or empty if not set
+     *
+     * Thread-safe.
+     */
+    std::string getLocationCodeDisplay() const;
+
+    /**
+     * @brief Get current location code (hex format)
+     * @return Location code in format "Z1:91BB82", or empty if not set
+     *
+     * Thread-safe.
+     */
+    std::string getLocationCodeHex() const;
+
+    // ========================================================================
     // History Management
     // ========================================================================
 
@@ -418,6 +475,9 @@ private:
     // Active announcements (FIG 0/19)
     // Map: cluster_id → ActiveAnnouncement
     std::unordered_map<uint8_t, ActiveAnnouncement> active_announcements_;
+
+    // EWS Location Code Manager (ETSI TS 104 090)
+    LocationCodeManager location_code_manager_;
 
     // ========================================================================
     // Thread Safety

@@ -219,6 +219,13 @@ public:
     Q_INVOKABLE void saveAnnouncementSettings();
     Q_INVOKABLE void resetAnnouncementSettings();
 
+    // EWS Location Code Management (ETSI TS 104 090)
+    Q_INVOKABLE bool setLocationCode(const QString& code);
+    Q_INVOKABLE void clearLocationCode();
+    Q_INVOKABLE bool hasLocationCode() const;
+    Q_INVOKABLE QString locationCodeDisplay() const;
+    Q_INVOKABLE QString locationCodeHex() const;
+
     // Backend integration callbacks (called by FIBProcessor via RadioReceiver)
     void onAnnouncementSupportUpdate(const ServiceAnnouncementSupport& support);
     void onAnnouncementSwitchingUpdate(const std::vector<ActiveAnnouncement>& announcements);
@@ -313,6 +320,7 @@ private:
     std::unique_ptr<AnnouncementManager> announcementManager_;
     uint32_t originalServiceId_;      // Service ID before announcement
     uint16_t originalSubchannelId_;   // Subchannel ID before announcement
+    uint16_t currentPlayingSubchannelId_ = 0;  // Currently ACTUALLY playing subchannel ID
 
     // Announcement UI state
     std::deque<AnnouncementHistoryEntry> m_announcementHistory;
