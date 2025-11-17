@@ -188,6 +188,123 @@ else()
 endif()
 
 # ============================================================================
+# E2E GUI Component Tests
+# ============================================================================
+
+option(BUILD_E2E_TESTS "Build E2E GUI component tests" ON)
+
+if(BUILD_E2E_TESTS)
+    message(STATUS "E2E GUI component tests enabled")
+
+    # Find Qt6 components needed for QML testing
+    find_package(Qt6 COMPONENTS Core Qml Quick Test QuickTest QUIET)
+
+    if(Qt6_FOUND AND Qt6Qml_FOUND AND Qt6Quick_FOUND AND Qt6Test_FOUND)
+        message(STATUS "Qt6 QML/Quick/Test components found - building E2E tests")
+
+        # E2E Component Tests
+        add_executable(test_e2e_components
+            e2e/test_components.cpp
+            e2e/test_framework.h
+        )
+
+        target_include_directories(test_e2e_components PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/e2e
+            ${CMAKE_SOURCE_DIR}/src/welle-gui
+            ${CMAKE_SOURCE_DIR}/src/welle-gui/QML
+        )
+
+        target_link_libraries(test_e2e_components
+            Qt6::Core
+            Qt6::Qml
+            Qt6::Quick
+            Qt6::Test
+        )
+
+        target_compile_features(test_e2e_components PRIVATE cxx_std_14)
+
+        target_compile_definitions(test_e2e_components PRIVATE
+            QT_QML_DEBUG
+            TESTING_MODE=1
+        )
+
+        # E2E Thai Component Tests
+        add_executable(test_e2e_thai_components
+            e2e/test_thai_components.cpp
+            e2e/test_framework.h
+        )
+
+        target_include_directories(test_e2e_thai_components PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/e2e
+            ${CMAKE_SOURCE_DIR}/src/welle-gui
+            ${CMAKE_SOURCE_DIR}/src/welle-gui/QML
+        )
+
+        target_link_libraries(test_e2e_thai_components
+            Qt6::Core
+            Qt6::Qml
+            Qt6::Quick
+            Qt6::Test
+        )
+
+        target_compile_features(test_e2e_thai_components PRIVATE cxx_std_14)
+
+        target_compile_definitions(test_e2e_thai_components PRIVATE
+            QT_QML_DEBUG
+            TESTING_MODE=1
+            THAILAND_DAB_SUPPORT=1
+        )
+
+        # Add to CTest if enabled
+        if(BUILD_TESTING)
+            enable_testing()
+
+            add_test(
+                NAME e2e_components
+                COMMAND test_e2e_components
+            )
+            set_tests_properties(e2e_components PROPERTIES
+                TIMEOUT 120
+                LABELS "e2e;gui;components"
+            )
+
+            add_test(
+                NAME e2e_thai_components
+                COMMAND test_e2e_thai_components
+            )
+            set_tests_properties(e2e_thai_components PROPERTIES
+                TIMEOUT 120
+                LABELS "e2e;gui;thai;components"
+            )
+        endif()
+
+        # Install test executables
+        install(TARGETS test_e2e_components test_e2e_thai_components
+            RUNTIME DESTINATION bin/tests
+        )
+
+        message(STATUS "E2E GUI test suite configured")
+        message(STATUS "  - Component tests: WButton, WComboBox, WSwitch, WDialog, WMenu, etc.")
+        message(STATUS "  - Thai component tests: ThaiServiceList, ThaiEPGViewer, ThaiDateFormatter")
+        message(STATUS "  - Zero console error/warning verification")
+        message(STATUS "  - Visual rendering tests")
+        message(STATUS "  - Interaction handling tests")
+        message(STATUS "  - Run with: ./build/src/tests/test_e2e_components")
+        message(STATUS "  - Run with: ./build/src/tests/test_e2e_thai_components")
+
+    else()
+        message(WARNING "Qt6 QML/Quick/Test components not found - E2E tests disabled")
+        message(WARNING "  Qt6Core: ${Qt6Core_FOUND}")
+        message(WARNING "  Qt6Qml: ${Qt6Qml_FOUND}")
+        message(WARNING "  Qt6Quick: ${Qt6Quick_FOUND}")
+        message(WARNING "  Qt6Test: ${Qt6Test_FOUND}")
+    endif()
+
+else()
+    message(STATUS "E2E GUI component tests disabled")
+endif()
+
+# ============================================================================
 # Optional: Code Coverage Support
 # ============================================================================
 
@@ -217,6 +334,28 @@ if(ENABLE_COVERAGE)
             gcov
         )
     endif()
+
+    if(BUILD_E2E_TESTS AND TARGET test_e2e_components)
+        target_compile_options(test_e2e_components PRIVATE
+            --coverage
+            -fprofile-arcs
+            -ftest-coverage
+        )
+        target_link_libraries(test_e2e_components
+            gcov
+        )
+    endif()
+
+    if(BUILD_E2E_TESTS AND TARGET test_e2e_thai_components)
+        target_compile_options(test_e2e_thai_components PRIVATE
+            --coverage
+            -fprofile-arcs
+            -ftest-coverage
+        )
+        target_link_libraries(test_e2e_thai_components
+            gcov
+        )
+    endif()
 endif()
 
 # ============================================================================
@@ -243,6 +382,16 @@ if(ENABLE_SANITIZERS)
         target_compile_options(test_security PRIVATE ${SANITIZER_FLAGS})
         target_link_libraries(test_security ${SANITIZER_FLAGS})
     endif()
+
+    if(BUILD_E2E_TESTS AND TARGET test_e2e_components)
+        target_compile_options(test_e2e_components PRIVATE ${SANITIZER_FLAGS})
+        target_link_libraries(test_e2e_components ${SANITIZER_FLAGS})
+    endif()
+
+    if(BUILD_E2E_TESTS AND TARGET test_e2e_thai_components)
+        target_compile_options(test_e2e_thai_components PRIVATE ${SANITIZER_FLAGS})
+        target_link_libraries(test_e2e_thai_components ${SANITIZER_FLAGS})
+    endif()
 endif()
 
 # ============================================================================
@@ -256,6 +405,7 @@ message(STATUS "========================================")
 message(STATUS "Thailand compliance tests: ${BUILD_THAILAND_TESTS}")
 message(STATUS "Security tests: ON")
 message(STATUS "Announcement tests: ${BUILD_ANNOUNCEMENT_TESTS}")
+message(STATUS "E2E GUI component tests: ${BUILD_E2E_TESTS}")
 message(STATUS "Code coverage: ${ENABLE_COVERAGE}")
 message(STATUS "Sanitizers: ${ENABLE_SANITIZERS}")
 message(STATUS "")
@@ -266,4 +416,19 @@ message(STATUS "To run specific tests:")
 message(STATUS "  ./build/src/tests/announcement_tests")
 message(STATUS "  ./build/src/tests/test_security")
 message(STATUS "  ./build/src/tests/test_thailand_compliance")
+message(STATUS "  ./build/src/tests/test_e2e_components")
+message(STATUS "  ./build/src/tests/test_e2e_thai_components")
+message(STATUS "")
+message(STATUS "To run E2E tests with verbose output:")
+message(STATUS "  ./build/src/tests/test_e2e_components -v2")
+message(STATUS "  ./build/src/tests/test_e2e_thai_components -v2")
 message(STATUS "========================================")
+
+# ============================================================================
+# E2E Subdirectory with Settings Pages Tests
+# ============================================================================
+
+# Add the e2e subdirectory which contains comprehensive settings page tests
+if(BUILD_E2E_TESTS)
+    add_subdirectory(e2e)
+endif()
