@@ -41,6 +41,9 @@ set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "")
 
 #enable_testing()
 
+# Add e2e GUI tests subdirectory
+add_subdirectory(src/tests/e2e)
+
 list(INSERT CMAKE_MODULE_PATH 0 ${CMAKE_SOURCE_DIR}/cmake/Modules)
 
 if(APPLE AND WITH_APP_BUNDLE)
