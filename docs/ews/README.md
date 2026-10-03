@@ -26,26 +26,6 @@ This directory contains documentation for ETSI TS 104 090 V1.1.2 compliance impl
 
 ---
 
-### 2. [Test Execution Plan](./test-execution-plan.md)
-
-**Purpose:** Step-by-step guide for executing ETSI TS 104 090 test suite
-
-**Contents:**
-- Test environment setup
-- 7 test procedures (Tests 1-7)
-- Expected results tables
-- Automated testing scripts
-- Compliance checklist
-
-**Test Files Required:**
-- EWS1.eti - EWS9.eti (download from ETSI docbox)
-- Total size: ~450 MB
-- Download link: https://docbox.etsi.org/Broadcast/Open/EWSv1_1.zip
-
-**Target Audience:** QA engineers, testers
-
----
-
 ## Quick Start
 
 ### 1. Download Test Files
@@ -174,7 +154,7 @@ EWSv1_1/
 
 ### From ETSI Store (Purchase Required)
 
-**ETSI TS 104 090 V1.1.2** PDF document (already in `docs/ts_104090v010102p.pdf`)
+**ETSI TS 104 090 V1.1.2** PDF document (not redistributed in this repository)
 
 ---
 
@@ -278,7 +258,6 @@ In addition to ETSI TS 104 090, Thailand NBTC may require:
 
 ### Internal Documentation
 
-- [Phase 3 Wave 2 Docs](../phase3/wave2/) - Announcement feature implementation
 - [CLAUDE.md](../../CLAUDE.md) - Project overview
 - [Thailand Compliance](../../README_THAILAND.md) - NBTC requirements
 
