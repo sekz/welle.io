@@ -382,6 +382,22 @@ ApplicationWindow {
                         }
                     }
                     MenuItem {
+                        text: qsTr("Announcement Settings")
+                        font.pixelSize: TextStyle.textStandartSize
+                        onTriggered: {
+                            announcementSettingsDialog.title = qsTr("Announcement Settings")
+                            announcementSettingsDialog.open()
+                        }
+                    }
+                    MenuItem {
+                        text: qsTr("Announcement History")
+                        font.pixelSize: TextStyle.textStandartSize
+                        onTriggered: {
+                            announcementHistoryDialog.title = qsTr("Announcement History")
+                            announcementHistoryDialog.open()
+                        }
+                    }
+                    MenuItem {
                         text: qsTr("About")
                         font.pixelSize: TextStyle.textStandartSize
                         onTriggered: {
@@ -844,6 +860,39 @@ ApplicationWindow {
             target: expertSettingsLoader.item
             function onEnableExpertModeStateChanged() {isExpertView = expertSettingsLoader.item.enableExpertModeState}
         }
+    }
+
+    WDialog {
+        id: announcementSettingsDialog
+
+        content: Loader {
+            id: announcementSettingsLoader
+            anchors.right: parent.right
+            anchors.left: parent.left
+            height: (progress < 1 || !item) ? undefined : item.implicitHeight
+            source:  "qrc:/QML/settingpages/AnnouncementSettings.qml"
+        }
+    }
+
+    WDialog {
+        id: announcementHistoryDialog
+        width: mainWindow.width * 0.9
+        height: mainWindow.height * 0.8
+
+        content: Loader {
+            id: announcementHistoryLoader
+            anchors.fill: parent
+            source:  "qrc:/QML/components/AnnouncementHistory.qml"
+        }
+    }
+
+    // Banner shown while an announcement is active
+    AnnouncementIndicator {
+        id: announcementIndicator
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        z: 100
     }
 
     MessagePopup {

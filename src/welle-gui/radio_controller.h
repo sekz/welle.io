@@ -40,6 +40,8 @@
 #include <QVariantMap>
 #include <QFile>
 #include <mutex>
+#include <deque>
+#include <set>
 #include <list>
 
 #include "audio_output.h"
@@ -47,12 +49,33 @@
 #include "radio-receiver.h"
 #include "ringbuffer.h"
 #include "channels.h"
+#include "../backend/announcement-manager.h"
+#include "../backend/announcement-types.h"
 
 class CVirtualInput;
 
 enum class PlotTypeEn { Spectrum, ImpulseResponse, QPSK, Null, Unknown };
 
 Q_DECLARE_METATYPE(CDeviceID)
+
+// Announcement history entry
+struct AnnouncementHistoryEntry {
+    QDateTime startTime;
+    QDateTime endTime;
+    int type = -1;  // Default: invalid type
+    QString serviceName;
+    int durationSeconds = 0;  // Default: zero duration
+
+    QVariantMap toVariantMap() const {
+        QVariantMap map;
+        map["startTime"] = startTime;
+        map["endTime"] = endTime;
+        map["type"] = type;
+        map["serviceName"] = serviceName;
+        map["durationSeconds"] = durationSeconds;
+        return map;
+    }
+};
 
 class CRadioController :
     public QObject,
@@ -97,6 +120,18 @@ class CRadioController :
     Q_PROPERTY(QString languageType MEMBER currentLanguageType NOTIFY languageTypeChanged)
     Q_PROPERTY(QString title MEMBER currentTitle NOTIFY titleChanged)
     Q_PROPERTY(QString text MEMBER currentText NOTIFY textChanged)
+
+    // Announcement support
+    Q_PROPERTY(bool announcementSupported READ announcementSupported NOTIFY announcementSupportedChanged)
+    Q_PROPERTY(bool announcementEnabled READ announcementEnabled WRITE setAnnouncementEnabled NOTIFY announcementEnabledChanged)
+    Q_PROPERTY(bool isInAnnouncement READ isInAnnouncement NOTIFY isInAnnouncementChanged)
+    Q_PROPERTY(int activeAnnouncementType READ activeAnnouncementType NOTIFY activeAnnouncementTypeChanged)
+    Q_PROPERTY(int announcementDuration READ announcementDuration NOTIFY announcementDurationChanged)
+    Q_PROPERTY(QString announcementServiceName READ announcementServiceName NOTIFY announcementServiceNameChanged)
+    Q_PROPERTY(int minAnnouncementPriority READ minAnnouncementPriority WRITE setMinAnnouncementPriority NOTIFY minAnnouncementPriorityChanged)
+    Q_PROPERTY(int maxAnnouncementDuration READ maxAnnouncementDuration WRITE setMaxAnnouncementDuration NOTIFY maxAnnouncementDurationChanged)
+    Q_PROPERTY(bool allowManualAnnouncementReturn READ allowManualAnnouncementReturn WRITE setAllowManualAnnouncementReturn NOTIFY allowManualAnnouncementReturnChanged)
+    Q_PROPERTY(QVariantList announcementHistory READ announcementHistory NOTIFY announcementHistoryChanged)
 
 public:
     CRadioController(QVariantMap &commandLineOptions, QObject* parent = nullptr);
@@ -161,10 +196,47 @@ public:
     virtual void onInputFailure(void) override;
     virtual void onRestartService(void) override;
 
+    // Announcement methods
+    bool announcementSupported() const { return m_announcementSupported; }
+    bool announcementEnabled() const { return m_announcementEnabled; }
+    void setAnnouncementEnabled(bool enabled);
+    bool isInAnnouncement() const { return m_isInAnnouncement; }
+    int activeAnnouncementType() const { return m_activeAnnouncementType; }
+    int announcementDuration() const { return m_announcementDuration; }
+    QString announcementServiceName() const { return m_announcementServiceName; }
+    int minAnnouncementPriority() const { return m_minAnnouncementPriority; }
+    void setMinAnnouncementPriority(int priority);
+    int maxAnnouncementDuration() const { return m_maxAnnouncementDuration; }
+    void setMaxAnnouncementDuration(int duration);
+    bool allowManualAnnouncementReturn() const { return m_allowManualReturn; }
+    void setAllowManualAnnouncementReturn(bool allow);
+    QVariantList announcementHistory();
+
+    Q_INVOKABLE void returnFromAnnouncement();
+    Q_INVOKABLE bool isAnnouncementTypeEnabled(int type);
+    Q_INVOKABLE void setAnnouncementTypeEnabled(int type, bool enabled);
+    Q_INVOKABLE void saveAnnouncementSettings();
+    Q_INVOKABLE void resetAnnouncementSettings();
+
+    // Backend integration callbacks (called by FIBProcessor via RadioReceiver)
+    void onAnnouncementSupportUpdate(const ServiceAnnouncementSupport& support);
+    void onAnnouncementSwitchingUpdate(const std::vector<ActiveAnnouncement>& announcements);
+    void onAlarmFlagUpdate(bool alarm_enabled);
+
+    // Get announcement manager reference (for FIBProcessor integration)
+    AnnouncementManager* getAnnouncementManager();
+
 private:
     void initialise(void);
     void resetTechnicalData(void);
     bool deviceRestart(void);
+    void addAnnouncementToHistory(const AnnouncementHistoryEntry& entry);
+    void loadAnnouncementSettings();
+
+    // Announcement switching helpers
+    void handleAnnouncementStarted(const ActiveAnnouncement& ann);
+    void handleAnnouncementEnded();
+    void updateAnnouncementDuration();
 
     std::shared_ptr<CVirtualInput> device;
     QVariantMap commandLineOptions;
@@ -223,6 +295,7 @@ private:
     QTimer labelTimer;
     QTimer stationTimer;
     QTimer channelTimer;
+    QTimer announcementDurationTimer;  // Updates the announcement duration
 
     bool isChannelScan = false;
     bool isAGC = false;
@@ -233,6 +306,27 @@ private:
 #ifdef __ANDROID__
     std::unique_ptr<QFile> rawFileAndroid;
 #endif
+
+    // Announcement management (INTEGRATED WITH BACKEND)
+    std::unique_ptr<AnnouncementManager> announcementManager_;
+    uint32_t originalServiceId_;      // Service ID before announcement
+    uint16_t originalSubchannelId_;   // Subchannel ID before announcement
+    uint16_t currentPlayingSubchannelId_ = 0;  // Currently ACTUALLY playing subchannel ID
+
+    // Announcement UI state
+    std::deque<AnnouncementHistoryEntry> m_announcementHistory;
+    std::mutex m_announcementHistoryMutex;
+    bool m_announcementEnabled = true;
+    bool m_isInAnnouncement = false;
+    int m_activeAnnouncementType = -1;
+    int m_announcementDuration = 0;
+    QString m_announcementServiceName;
+    int m_minAnnouncementPriority = 1;
+    int m_maxAnnouncementDuration = 300;  // 5 minutes default
+    bool m_allowManualReturn = true;
+    bool m_announcementSupported = false;
+    std::set<int> m_enabledAnnouncementTypes;
+    static const size_t MAX_HISTORY_SIZE = 500;
 
 public slots:
     void setErrorMessage(QString Text);
@@ -246,6 +340,7 @@ private slots:
     void labelTimerTimeout(void);
     void stationTimerTimeout(void);
     void channelTimerTimeout(void);
+    void announcementDurationTimerTimeout(void);
     void nextChannel(bool isWait);
     void displayDateTime(const dab_date_time_t& dateTime);
     void restartService(void);
@@ -299,6 +394,19 @@ signals:
     void titleChanged();
     void textChanged();
     void languageTypeChanged();
+
+    // Announcement signals
+    void announcementSupportedChanged(bool supported);
+    void announcementEnabledChanged(bool enabled);
+    void isInAnnouncementChanged(bool inAnnouncement);
+    void activeAnnouncementTypeChanged(int type);
+    void announcementDurationChanged(int duration);
+    void announcementServiceNameChanged(QString serviceName);
+    void minAnnouncementPriorityChanged(int priority);
+    void maxAnnouncementDurationChanged(int duration);
+    void allowManualAnnouncementReturnChanged(bool allow);
+    void announcementTypesChanged();  // Emitted when announcement type enable/disable changes
+    void announcementHistoryChanged();
 
     void deviceReady();
     void deviceClosed();

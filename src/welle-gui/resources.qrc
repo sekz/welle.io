@@ -118,5 +118,8 @@
         <file>QML/components/ViewBaseFrame.qml</file>
         <file>QML/MotView.qml</file>
         <file>QML/GeneralView.qml</file>
+        <file>QML/settingpages/AnnouncementSettings.qml</file>
+        <file>QML/components/AnnouncementIndicator.qml</file>
+        <file>QML/components/AnnouncementHistory.qml</file>
     </qresource>
 </RCC>
