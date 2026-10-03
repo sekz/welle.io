@@ -46,7 +46,7 @@ void FIBProcessor::processFIB(uint8_t *p, uint16_t fib)
     int8_t  processedBytes  = 0;
     uint8_t *d = p;
 
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
 
     (void)fib;
     while (processedBytes  < 30) {
@@ -126,7 +126,27 @@ void FIBProcessor::FIG0Extension0 (uint8_t *d)
         myRadioInterface.onNewEnsemble(ensembleId);
     }
 
+    // Read change flag and Al flag from byte 4
+    // Per ETSI EN 300 401 V2.1.1 Figure 11:
+    // Byte 4 structure:
+    //   Bits 32-33: Change flag (2 bits)
+    //   Bit 34: Al flag (Alarm flag) - THIS IS THE CORRECT POSITION
+    //   Bits 35-39: OE flag, P/D flag, CIF Count (high)
     changeflag  = getBits_2 (d, 16 + 16);
+
+    // ETSI EN 300 401 V2.1.1 Figure 11: Al flag (Alarm flag)
+    // Al flag is at bit 34 (byte 4, bit position 2 after the 2-bit change flag)
+    // Al=1: Alarm announcements enabled for this ensemble
+    // Al=0: Alarm announcements disabled
+    uint8_t Al  = getBits_1 (d, 16 + 16 + 2);  // Offset: 16 (header+byte1) + 16 (EId) + 2 (changeflag) = bit 34
+
+    // Notify RadioController of Al flag changes
+    static uint8_t previous_Al = 0xFF;  // Invalid initial value
+    if (Al != previous_Al) {
+        previous_Al = Al;
+        bool alarm_enabled = (Al == 1);
+        myRadioInterface.onAlarmFlagUpdate(alarm_enabled);
+    }
 
     highpart        = getBits_5 (d, 16 + 19) % 20;
     (void)highpart;
@@ -663,56 +683,180 @@ void FIBProcessor::FIG0Extension17(uint8_t *d)
 
 void FIBProcessor::FIG0Extension18(uint8_t *d)
 {
+    // FIG 0/18: Announcement support (ETSI EN 300 401 Section 8.1.6.1)
+    // This FIG provides information about which announcement types each service supports
+    // and which announcement clusters it participates in.
+    //
+    // Structure:
+    // - SId (16 bits): Service Identifier
+    // - ASu flags (16 bits): Announcement Support flags (bit field)
+    // - Number of clusters (5 bits): Count of announcement clusters
+    // - Cluster IDs (8 bits each): List of cluster IDs
+
     int16_t  offset  = 16;       // bits
-    uint16_t SId, AsuFlags;
     int16_t  Length  = getBits_5 (d, 3);
 
     while (offset / 8 < Length - 1 ) {
+        // Parse service ID (16 bits for programme services)
+        uint16_t SId = getBits (d, offset, 16);
+
+        // Parse Announcement Support flags (16 bits)
+        // Each bit represents support for a specific announcement type
+        uint16_t AsuFlags = getBits (d, offset + 16, 16);
+
+        // Parse number of clusters (5 bits) - located at offset + 35
         int16_t NumClusters = getBits_5 (d, offset + 35);
-        SId = getBits (d, offset, 16);
-        AsuFlags = getBits (d, offset + 16, 16);
-        //     std::clog << "fib-processor:" << "Announcement %d for SId %d with %d clusters\n",
-        //                      AsuFlags, SId, NumClusters) << std::endl;
+
+        // Create ServiceAnnouncementSupport structure
+        ServiceAnnouncementSupport support;
+        support.service_id = SId;
+        support.support_flags.flags = AsuFlags;
+
+        // Parse cluster IDs (8 bits each, starting at offset + 40)
+        support.cluster_ids.clear();
+        for (int16_t i = 0; i < NumClusters; i++) {
+            uint8_t clusterId = getBits_8(d, offset + 40 + (i * 8));
+            support.cluster_ids.push_back(clusterId);
+        }
+
+        // Store the announcement support information
+        storeAnnouncementSupport(support);
+
+        // CALLBACK INTEGRATION: Notify RadioController of announcement support update
+        // This allows the GUI to react to announcement capabilities of services
+        myRadioInterface.onAnnouncementSupportUpdate(support);
+
+        // Advance offset to next service entry
+        // 40 bits (SId + ASu + NumClusters) + NumClusters * 8 bits (cluster IDs)
         offset += 40 + NumClusters * 8;
     }
-    (void)SId;
-    (void)AsuFlags;
 }
 
+
+/**
+ * @brief FIG 0/19 - Announcement Switching
+ *
+ * ETSI EN 300 401 V2.1.1 Section 8.1.6.2: "Announcement switching"
+ *
+ * This FIG indicates which announcements are currently active in the ensemble.
+ * When an announcement starts, its corresponding bit in the ASw flags changes
+ * from 0 to 1. When it ends, the bit changes from 1 to 0.
+ *
+ * Structure:
+ * - Cluster Id (8 bits): Announcement cluster identifier
+ * - ASw flags (16 bits): Active announcement types (bit field)
+ * - Rfa (2 bits): Reserved for future addition
+ * - New flag (1 bit): Indicates if this is a new announcement
+ * - Region flag (1 bit): Indicates if regional announcement
+ * - SubChId (6 bits): Subchannel carrying the announcement
+ * - [Optional] Region Id lower (6 bits): Only if region_flag = 1
+ *
+ * State transitions:
+ * - ASw 0x0000 -> non-zero: ANNOUNCEMENT STARTED
+ * - ASw non-zero -> 0x0000: ANNOUNCEMENT ENDED
+ * - ASw non-zero -> different non-zero: ANNOUNCEMENT TYPE CHANGED
+ */
 void FIBProcessor::FIG0Extension19(uint8_t *d)
 {
     int16_t  offset  = 16;       // bits
     int16_t  Length  = getBits_5 (d, 3);
     uint8_t  region_Id_Lower;
 
+    std::vector<ActiveAnnouncement> announcements;
+
     while (offset / 8 < Length - 1) {
+        // Parse FIG 0/19 fields (ETSI EN 300 401 V2.1.1 Figure 43)
+        // Cluster Id: 8 bits (per Figure 43: "Cluster Id: 8 bits")
+        // NOTE: Cluster Id = 0xFF (255, '1111 1111') is EXCLUSIVE for Alarm announcements
         uint8_t clusterId   = getBits_8 (d, offset);
+        uint16_t aswFlags   = getBits (d, offset + 8, 16);
         bool    new_flag    = getBits_1(d, offset + 24);
         bool    region_flag = getBits_1 (d, offset + 25);
         uint8_t subChId     = getBits_6 (d, offset + 26);
 
-        uint16_t aswFlags = getBits (d, offset + 8, 16);
-        //     std::clog << "fib-processor:" <<
-        //            "%s %s Announcement %d for Cluster %2u on SubCh %2u ",
-        //                ((new_flag==1)?"new":"old"),
-        //                ((region_flag==1)?"regional":""),
-        //                aswFlags, clusterId,subChId) << std::endl;
+        // Create ActiveAnnouncement structure
+        ActiveAnnouncement announcement;
+        announcement.cluster_id = clusterId;
+        announcement.active_flags.flags = aswFlags;
+        announcement.subchannel_id = subChId;
+        announcement.new_flag = new_flag;
+        announcement.region_flag = region_flag;
+        announcement.last_update = std::chrono::steady_clock::now();
+
+        // Handle regional information
         if (region_flag) {
-            region_Id_Lower = getBits_6 (d, offset + 34);
-            offset += 40;
-            //           fprintf(stderr,"for region %u",region_Id_Lower);
+            region_Id_Lower = getBits_6 (d, offset + 32);  // offset+32: after 8-bit ClusterId + 16-bit ASw + 1-bit new + 1-bit region + 6-bit SubChId
+            offset += 38;  // Total: 8 + 16 + 1 + 1 + 6 + 6 = 38 bits
+            (void)region_Id_Lower;  // Store if needed for regional filtering
         }
         else {
-            offset += 32;
+            offset += 32;  // Total: 8 + 16 + 1 + 1 + 6 = 32 bits (no region_Id_Lower)
         }
 
-        //     fprintf(stderr,"\n");
-        (void)clusterId;
-        (void)new_flag;
-        (void)subChId;
-        (void)aswFlags;
+        // State transition detection
+        std::lock_guard<std::recursive_mutex> lock(activeAnnouncementsMutex_);
+
+        auto it = activeAnnouncementsMap_.find(clusterId);
+        if (it != activeAnnouncementsMap_.end()) {
+            // Existing cluster - check for state change
+            uint16_t oldFlags = it->second.active_flags.flags;
+            uint16_t newFlags = aswFlags;
+
+            if (oldFlags == 0x0000 && newFlags != 0x0000) {
+                // ANNOUNCEMENT STARTED
+                std::clog << "FIG 0/19: Announcement STARTED on cluster "
+                          << static_cast<int>(clusterId)
+                          << ", subchannel " << static_cast<int>(subChId)
+                          << ", flags 0x" << std::hex << newFlags << std::dec
+                          << (region_flag ? " (regional)" : "")
+                          << (new_flag ? " (new)" : "")
+                          << std::endl;
+                announcement.start_time = std::chrono::steady_clock::now();
+            }
+            else if (oldFlags != 0x0000 && newFlags == 0x0000) {
+                // ANNOUNCEMENT ENDED
+                auto duration = std::chrono::duration_cast<std::chrono::seconds>(
+                    announcement.last_update - it->second.start_time
+                ).count();
+
+                std::clog << "FIG 0/19: Announcement ENDED on cluster "
+                          << static_cast<int>(clusterId)
+                          << " after " << duration << " seconds"
+                          << std::endl;
+                announcement.start_time = it->second.start_time;
+            }
+            else if (oldFlags != newFlags && oldFlags != 0x0000 && newFlags != 0x0000) {
+                // ANNOUNCEMENT TYPE CHANGED
+                std::clog << "FIG 0/19: Announcement TYPE CHANGED on cluster "
+                          << static_cast<int>(clusterId)
+                          << ", flags 0x" << std::hex << oldFlags
+                          << " -> 0x" << newFlags << std::dec
+                          << std::endl;
+                announcement.start_time = it->second.start_time;
+            }
+            else {
+                // No change, just update timestamp
+                announcement.start_time = it->second.start_time;
+            }
+        }
+        else {
+            // New cluster
+            if (aswFlags != 0x0000) {
+                announcement.start_time = std::chrono::steady_clock::now();
+            }
+        }
+
+        announcements.push_back(announcement);
     }
-    (void)region_Id_Lower;
+
+    // Update stored announcements
+    updateActiveAnnouncements(announcements);
+
+    // CALLBACK INTEGRATION: Notify RadioController of announcement switching updates
+    // This triggers announcement switching logic in the GUI layer
+    if (!announcements.empty()) {
+        myRadioInterface.onAnnouncementSwitchingUpdate(announcements);
+    }
 }
 
 void FIBProcessor::FIG0Extension21(uint8_t *d)
@@ -1263,24 +1407,32 @@ void FIBProcessor::dropService(uint32_t SId)
 
 void FIBProcessor::clearEnsemble()
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     components.clear();
     subChannels.resize(64);
     services.clear();
     serviceRepeatCount.clear();
     timeLastServiceDecrement = std::chrono::steady_clock::now();
     timeLastFCT0Frame = std::chrono::system_clock::now();
+
+    // Clear active announcements
+    std::lock_guard<std::recursive_mutex> ann_lock(activeAnnouncementsMutex_);
+    activeAnnouncementsMap_.clear();
+
+    // Clear announcement support (FIG 0/18)
+    std::lock_guard<std::recursive_mutex> support_lock(announcementSupportMutex_);
+    announcementSupportMap_.clear();
 }
 
 std::vector<Service> FIBProcessor::getServiceList() const
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     return services;
 }
 
 Service FIBProcessor::getService(uint32_t sId) const
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
 
     auto srv = std::find_if(services.begin(), services.end(),
                 [&](const Service& s) {
@@ -1298,7 +1450,7 @@ Service FIBProcessor::getService(uint32_t sId) const
 std::list<ServiceComponent> FIBProcessor::getComponents(const Service& s) const
 {
     std::list<ServiceComponent> c;
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     for (const auto& component : components) {
         if (component.SId == s.serviceId) {
             c.push_back(component);
@@ -1310,30 +1462,182 @@ std::list<ServiceComponent> FIBProcessor::getComponents(const Service& s) const
 
 Subchannel FIBProcessor::getSubchannel(const ServiceComponent& sc) const
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     return subChannels.at(sc.subchannelId);
 }
 
 uint16_t FIBProcessor::getEnsembleId() const
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     return ensembleId;
 }
 
 uint8_t FIBProcessor::getEnsembleEcc() const
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     return ensembleEcc;
 }
 
 DabLabel FIBProcessor::getEnsembleLabel() const
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     return ensembleLabel;
 }
 
 std::chrono::system_clock::time_point FIBProcessor::getTimeLastFCT0Frame() const
 {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::recursive_mutex> lock(mutex);
     return timeLastFCT0Frame;
+}
+
+// Active announcement management methods
+
+/**
+ * @brief Update active announcements from FIG 0/19
+ *
+ * Thread-safe method to update the active announcements map.
+ */
+void FIBProcessor::updateActiveAnnouncements(const std::vector<ActiveAnnouncement>& announcements)
+{
+    std::lock_guard<std::recursive_mutex> lock(activeAnnouncementsMutex_);
+
+    for (const auto& announcement : announcements) {
+        activeAnnouncementsMap_[announcement.cluster_id] = announcement;
+
+        // Remove announcements that are no longer active (ASw = 0x0000)
+        if (announcement.active_flags.flags == 0x0000) {
+            // Keep for a short time to allow retrieval, but could be removed
+            // if we want to clean up immediately
+        }
+    }
+}
+
+/**
+ * @brief Get active announcement for a specific cluster
+ *
+ * @param cluster_id Cluster ID to query
+ * @return ActiveAnnouncement structure (empty if not found)
+ */
+ActiveAnnouncement FIBProcessor::getActiveAnnouncement(uint8_t cluster_id) const
+{
+    std::lock_guard<std::recursive_mutex> lock(activeAnnouncementsMutex_);
+
+    auto it = activeAnnouncementsMap_.find(cluster_id);
+    if (it != activeAnnouncementsMap_.end()) {
+        return it->second;
+    }
+
+    return ActiveAnnouncement();  // Return empty announcement
+}
+
+/**
+ * @brief Get all active announcements
+ *
+ * @return Vector of all currently active announcements
+ */
+std::vector<ActiveAnnouncement> FIBProcessor::getAllActiveAnnouncements() const
+{
+    std::lock_guard<std::recursive_mutex> lock(activeAnnouncementsMutex_);
+
+    std::vector<ActiveAnnouncement> result;
+    for (const auto& pair : activeAnnouncementsMap_) {
+        if (pair.second.isActive()) {
+            result.push_back(pair.second);
+        }
+    }
+
+    return result;
+}
+
+/**
+ * @brief Check if an announcement is active in a cluster
+ *
+ * @param cluster_id Cluster ID to check
+ * @return true if announcement is active (ASw != 0x0000)
+ */
+bool FIBProcessor::isAnnouncementActive(uint8_t cluster_id) const
+{
+    std::lock_guard<std::recursive_mutex> lock(activeAnnouncementsMutex_);
+
+    auto it = activeAnnouncementsMap_.find(cluster_id);
+    if (it != activeAnnouncementsMap_.end()) {
+        return it->second.isActive();
+    }
+
+    return false;
+}
+
+// Announcement support methods implementation (FIG 0/18)
+
+/**
+ * @brief Store announcement support information from FIG 0/18
+ *
+ * Thread-safe method to store the announcement support data for a service.
+ *
+ * @param support ServiceAnnouncementSupport structure with service ID, ASu flags, and cluster IDs
+ */
+void FIBProcessor::storeAnnouncementSupport(const ServiceAnnouncementSupport& support)
+{
+    std::lock_guard<std::recursive_mutex> lock(announcementSupportMutex_);
+    announcementSupportMap_[support.service_id] = support;
+}
+
+/**
+ * @brief Retrieve announcement support for a service
+ *
+ * @param service_id Service ID to query
+ * @return ServiceAnnouncementSupport structure (empty if service not found)
+ */
+ServiceAnnouncementSupport FIBProcessor::getAnnouncementSupport(uint32_t service_id) const
+{
+    std::lock_guard<std::recursive_mutex> lock(announcementSupportMutex_);
+
+    auto it = announcementSupportMap_.find(service_id);
+    if (it != announcementSupportMap_.end()) {
+        return it->second;
+    }
+
+    // Return empty support if not found
+    ServiceAnnouncementSupport empty;
+    empty.service_id = service_id;
+    return empty;
+}
+
+/**
+ * @brief Check if service supports a specific announcement type
+ *
+ * @param service_id Service ID to query
+ * @param type Announcement type to check
+ * @return true if service supports this announcement type, false otherwise
+ */
+bool FIBProcessor::serviceSupportsAnnouncement(uint32_t service_id, AnnouncementType type) const
+{
+    std::lock_guard<std::recursive_mutex> lock(announcementSupportMutex_);
+
+    auto it = announcementSupportMap_.find(service_id);
+    if (it != announcementSupportMap_.end()) {
+        return it->second.supportsType(type);
+    }
+
+    return false;
+}
+
+/**
+ * @brief Get all services with announcement support
+ *
+ * @return Vector of service IDs that support at least one announcement type
+ */
+std::vector<uint32_t> FIBProcessor::getServicesWithAnnouncementSupport() const
+{
+    std::lock_guard<std::recursive_mutex> lock(announcementSupportMutex_);
+
+    std::vector<uint32_t> serviceIds;
+    for (const auto& entry : announcementSupportMap_) {
+        // Only include services with at least one announcement type supported
+        if (entry.second.support_flags.hasAny()) {
+            serviceIds.push_back(entry.first);
+        }
+    }
+
+    return serviceIds;
 }

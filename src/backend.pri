@@ -103,6 +103,8 @@ HEADERS += \
     $$PWD/backend/pad_decoder.h \
     $$PWD/backend/eep-protection.h \
     $$PWD/backend/energy_dispersal.h \
+    $$PWD/backend/announcement-manager.h \
+    $$PWD/backend/announcement-types.h \
     $$PWD/backend/fib-processor.h \
     $$PWD/backend/fic-handler.h \
     $$PWD/backend/msc-handler.h \
@@ -155,6 +157,8 @@ SOURCES += \
     $$PWD/backend/mot_manager.cpp \
     $$PWD/backend/pad_decoder.cpp \
     $$PWD/backend/eep-protection.cpp \
+    $$PWD/backend/announcement-manager.cpp \
+    $$PWD/backend/announcement-types.cpp \
     $$PWD/backend/fib-processor.cpp \
     $$PWD/backend/fic-handler.cpp \
     $$PWD/backend/msc-handler.cpp \

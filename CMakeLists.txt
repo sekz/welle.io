@@ -247,6 +247,8 @@ set(backend_sources
     src/backend/mot_manager.cpp
     src/backend/pad_decoder.cpp
     src/backend/eep-protection.cpp
+    src/backend/announcement-manager.cpp
+    src/backend/announcement-types.cpp
     src/backend/fib-processor.cpp
     src/backend/fic-handler.cpp
     src/backend/msc-handler.cpp
