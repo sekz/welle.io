@@ -1925,12 +1925,12 @@ void CRadioController::resetAnnouncementSettings()
 
 bool CRadioController::setLocationCode(const QString& code)
 {
-    if (!m_announcementManager) {
+    if (!announcementManager_) {
         qWarning() << "RadioController: Cannot set location code - announcement manager not initialized";
         return false;
     }
 
-    bool success = m_announcementManager->setLocationCode(code.toStdString());
+    bool success = announcementManager_->setLocationCode(code.toStdString());
 
     if (success) {
         qDebug() << "RadioController: Location code set to" << code;
@@ -1943,38 +1943,38 @@ bool CRadioController::setLocationCode(const QString& code)
 
 void CRadioController::clearLocationCode()
 {
-    if (!m_announcementManager) {
+    if (!announcementManager_) {
         qWarning() << "RadioController: Cannot clear location code - announcement manager not initialized";
         return;
     }
 
-    m_announcementManager->clearLocationCode();
+    announcementManager_->clearLocationCode();
     qDebug() << "RadioController: Location code cleared";
 }
 
 bool CRadioController::hasLocationCode() const
 {
-    if (!m_announcementManager) {
+    if (!announcementManager_) {
         return false;
     }
 
-    return m_announcementManager->hasLocationCode();
+    return announcementManager_->hasLocationCode();
 }
 
 QString CRadioController::locationCodeDisplay() const
 {
-    if (!m_announcementManager) {
+    if (!announcementManager_) {
         return QString();
     }
 
-    return QString::fromStdString(m_announcementManager->getLocationCodeDisplay());
+    return QString::fromStdString(announcementManager_->getLocationCodeDisplay());
 }
 
 QString CRadioController::locationCodeHex() const
 {
-    if (!m_announcementManager) {
+    if (!announcementManager_) {
         return QString();
     }
 
-    return QString::fromStdString(m_announcementManager->getLocationCodeHex());
+    return QString::fromStdString(announcementManager_->getLocationCodeHex());
 }

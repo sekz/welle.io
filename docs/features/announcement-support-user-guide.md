@@ -2224,7 +2224,6 @@ Item {
 
 **Documentation:**
 - Technical Documentation: `/docs/features/announcement-support-plan.md`
-- Developer Guide: `/docs/phase3/announcement-manager-design.md`
 
 ---
 
@@ -2245,5 +2244,4 @@ Copyright (C) 2025 welle.io Thailand DAB+ Receiver Project
 
 For technical implementation details, see:
 - `/docs/features/announcement-support-plan.md` (Implementation plan)
-- `/docs/phase3/announcement-manager-design.md` (Architecture design)
 - ETSI EN 300 401 V2.1.1 Section 8.1.6 (Standard specification)

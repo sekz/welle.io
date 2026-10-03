@@ -47,8 +47,6 @@ The implemented framework fully supports official data integration when availabl
 - Fixed announcement type quick selection buttons (signal-slot pattern)
 - Enhanced debug logging for component loading
 
-See [docs/phase3/wave2/](docs/phase3/wave2/) for complete documentation.
-
 **Build status**
 - Linux (Flatpak x86_64 and arm64): [![Linux build](https://github.com/AlbrechtL/welle.io/actions/workflows/linux.yml/badge.svg)](https://github.com/AlbrechtL/welle.io/actions/workflows/linux.yml)
 - Windows (Installer x86_64): [![Windows build](https://github.com/AlbrechtL/welle.io/actions/workflows/windows.yml/badge.svg)](https://github.com/AlbrechtL/welle.io/actions/workflows/windows.yml)
