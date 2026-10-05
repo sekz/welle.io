@@ -165,6 +165,8 @@ string DabLabel::fig2_label() const
         case CharacterSet::EbuLatin:
             std::clog << "DABConstants: FIG2 label encoded in EBU Latin is not allowed." << std::endl;
             return ""; // Fallback to FIG1
+        case CharacterSet::ThaiProfile:
+            return toUtf8StringUsingCharset(segments_cat.data(), extended_label_charset, segments_cat.size());
         case CharacterSet::UnicodeUtf8:
             return string(segments_cat.begin(), segments_cat.end());
         case CharacterSet::UnicodeUcs2:

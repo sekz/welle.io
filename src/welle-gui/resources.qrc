@@ -107,6 +107,7 @@
         <file>QML/components/WSpectrum.qml</file>
         <file>QML/components/WMenu.qml</file>
         <file>QML/components/WToolTip.qml</file>
+        <file>QML/components/ThaiDateFormatter.qml</file>
         <file>QML/components/qmldir</file>
         <file>QML/expertviews/ServiceDetails.qml</file>
         <file>QML/expertviews/ImpulseResponseGraph.qml</file>

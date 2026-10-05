@@ -124,6 +124,7 @@ HEADERS += \
     $$PWD/various/Xtan2.h \
     $$PWD/various/channels.h \
     $$PWD/various/wavfile.h \
+    $$PWD/various/thai_text_converter.h \
     $$PWD/various/Socket.h \
     $$PWD/various/MathHelper.h \
     $$PWD/various/fft.h \
@@ -170,6 +171,7 @@ SOURCES += \
     $$PWD/backend/uep-protection.cpp \
     $$PWD/backend/viterbi.cpp \
     $$PWD/various/Xtan2.cpp \
+    $$PWD/various/thai_text_converter.cpp \
     $$PWD/various/channels.cpp \
     $$PWD/various/fft.cpp \
     $$PWD/various/wavfile.c \

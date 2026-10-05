@@ -137,6 +137,37 @@ std::string toUtf8StringUsingCharset(const void* buffer,
             }
             break;
 
+        case CharacterSet::ThaiProfile:
+            {
+                // Not registered in ETSI TS 101 756 (Table 1): 8-bit Thai (TIS-620).
+                // ASCII is passed through, 0xA1-0xDA and 0xDF-0xFB map to U+0E01-U+0E5B.
+                const uint8_t* buf = reinterpret_cast<const uint8_t*>(buffer);
+                const size_t MAX_LABEL_LENGTH = 256;
+                size_t len = num_bytes;
+                if (len == 0) {
+                    while (len < MAX_LABEL_LENGTH && buf[len] != 0) {
+                        len++;
+                    }
+                }
+
+                std::string result;
+                for (size_t i = 0; i < len; i++) {
+                    const uint8_t c = buf[i];
+                    if (c >= 0x20 && c <= 0x7E) {
+                        result += static_cast<char>(c);
+                    } else if ((c >= 0xA1 && c <= 0xDA) || (c >= 0xDF && c <= 0xFB)) {
+                        const uint16_t cp = 0x0E00 + (c - 0xA0);
+                        result += static_cast<char>(0xE0 | (cp >> 12));
+                        result += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+                        result += static_cast<char>(0x80 | (cp & 0x3F));
+                    } else {
+                        result += '?';
+                    }
+                }
+                return result;
+            }
+            break;
+
         case CharacterSet::EbuLatin:
         default:
             {
